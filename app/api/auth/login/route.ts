@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
     user.lastLogin = new Date();
     await user.save();
 
+    // Log role assignment
+    console.log(`🎯 Role Assignment - User: ${user.email}, Role: ${user.role} (${user.role === 'guest' ? 'Guest' : user.role === 'investor' ? 'Investor' : 'Admin'})`);
+
     // Generate JWT token
     const token = JWTAuthService.generateToken(user);
 
@@ -86,6 +89,8 @@ export async function POST(request: NextRequest) {
       portfolioValue: user.portfolioValue,
       joinDate: user.joinDate
     };
+
+    console.log(`📦 User Data Created - Role: ${userData.role}, Name: ${userData.firstName} ${userData.lastName}`);
 
     // Set HTTP-only cookie
     const response = NextResponse.json({

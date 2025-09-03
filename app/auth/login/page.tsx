@@ -27,21 +27,23 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-    console.log('Login attempt with:', { email, password: '***' });
+    console.log('🔐 Login attempt with:', { email, password: '***' });
 
     try {
       const result = await login(email, password)
-      console.log('Login result:', result);
+      console.log('📊 Login result:', result);
 
       if (result.success) {
+        console.log('🎉 Login successful! Redirecting to dashboard...');
         // The useAuth hook handles setting user state
         // Redirect will happen after auth context updates
         router.push('/dashboard')
       } else {
+        console.log('❌ Login failed:', result.error);
         setError(result.error || 'Login failed')
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('💥 Login error:', error);
       setError('Failed to login. Please try again.')
     } finally {
       setIsLoading(false)

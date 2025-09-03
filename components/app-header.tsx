@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, Moon, Sun } from "lucide-react"
+import { Bell, Moon, Sun, LogOut } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,25 +14,28 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { type UserRole, getCurrentUser, setRole, getRole } from "@/lib/mockAuth"
+import { useAuth } from "@/hooks/useAuth"
 
 export function AppHeader() {
-  const [currentUser, setCurrentUser] = useState(getCurrentUser())
-  const [currentRole, setCurrentRole] = useState<UserRole>("guest")
+  const { user, logout, isAuthenticated, loading } = useAuth()
   const { theme, setTheme } = useTheme()
 
-  useEffect(() => {
-    const role = getRole()
-    setCurrentRole(role)
-    setCurrentUser(getCurrentUser())
-  }, [])
+  // Log role information whenever user state changes
+  console.log('🎨 Header render - User state:', {
+    isAuthenticated,
+    loading,
+    userRole: user?.role,
+    userName: user ? `${user.firstName} ${user.lastName}` : 'Not logged in'
+  });
 
-  const handleRoleChange = (newRole: UserRole) => {
-    setRole(newRole)
-    setCurrentRole(newRole)
-    setCurrentUser(getCurrentUser())
-    // Refresh the page to update navigation
-    window.location.reload()
+  const handleLogout = async () => {
+    try {
+      console.log('🚪 Logging out user:', user?.email);
+      await logout()
+      console.log('✅ Logout successful');
+    } catch (error) {
+      console.error('❌ Logout failed:', error)
+    }
   }
 
   const getInitials = (name: string) => {
@@ -41,6 +44,20 @@ export function AppHeader() {
       .map((n) => n[0])
       .join("")
       .toUpperCase()
+  }
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <header className="flex h-16 items-center justify-between border-b border-border bg-background px-6">
+        <div className="flex items-center space-x-4">
+          <h1 className="text-lg font-semibold text-foreground">Real Estate Investment Platform</h1>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+        </div>
+      </header>
+    )
   }
 
   return (
@@ -58,7 +75,7 @@ export function AppHeader() {
         </Button>
 
         {/* Notifications */}
-        {currentRole !== "guest" && (
+        {isAuthenticated && user?.role !== "guest" && (
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-4 w-4" />
             <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs">
@@ -69,38 +86,45 @@ export function AppHeader() {
         )}
 
         {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.name} />
-                <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
-              </Avatar>
+        {isAuthenticated && user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={`${user.firstName} ${user.lastName}`} />
+                  <AvatarFallback>{getInitials(`${user.firstName} ${user.lastName}`)}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                  <Badge variant="secondary" className="w-fit text-xs">
+                    {user.role}
+                  </Badge>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Profile Settings</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" asChild>
+              <a href="/auth/login">Login</a>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{currentUser.name}</p>
-                <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
-                <Badge variant="secondary" className="w-fit text-xs">
-                  {currentRole}
-                </Badge>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-
-            {/* Demo Role Switcher */}
-            <DropdownMenuLabel className="text-xs text-muted-foreground">Demo: Switch Role</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleRoleChange("guest")}>Guest User</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleRoleChange("investor")}>Investor</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleRoleChange("admin")}>Admin</DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-            <DropdownMenuItem>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <Button size="sm" asChild>
+              <a href="/auth/signup">Sign Up</a>
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   )

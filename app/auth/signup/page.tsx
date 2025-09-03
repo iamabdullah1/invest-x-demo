@@ -22,7 +22,7 @@ export default function SignupPage() {
     phone: "",
     password: "",
     confirmPassword: "",
-    role: "investor", // Default to investor
+    role: "guest", // Default to guest
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -69,6 +69,8 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
+      console.log(`📝 Signup Form - Email: ${formData.email}, Role: ${formData.role}`);
+      
       // First send OTP for email verification
       const response = await fetch('/api/auth/otp/send', {
         method: 'POST',
@@ -86,6 +88,7 @@ export default function SignupPage() {
       if (data.success) {
         // Store signup data temporarily in sessionStorage
         sessionStorage.setItem('signupData', JSON.stringify(formData))
+        console.log(`💾 Stored signup data with role: ${formData.role}`);
         
         // Redirect to OTP verification with signup type
         router.push(`/auth/verify-otp?sessionId=${data.sessionId}&email=${encodeURIComponent(formData.email)}&type=signup`)

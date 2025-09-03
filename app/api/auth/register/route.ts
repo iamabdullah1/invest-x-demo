@@ -6,7 +6,9 @@ import JWTAuthService from '@/lib/jwtAuth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { firstName, lastName, email, phone, password, confirmPassword, role = 'investor', isEmailVerified = false } = await request.json();
+    const { firstName, lastName, email, phone, password, confirmPassword, role = 'guest', isEmailVerified = false } = await request.json();
+
+    console.log(`🎯 Registration Request - Email: ${email}, Role Requested: ${role}`);
 
     // Validate input
     if (!firstName || !lastName || !email || !password) {
@@ -76,7 +78,11 @@ export async function POST(request: NextRequest) {
       isActive: true
     });
 
+    console.log(`👤 Creating User - Email: ${email}, Role: ${role}, Final Role: ${newUser.role}`);
+
     const savedUser = await newUser.save();
+
+    console.log(`✅ User Created Successfully - Email: ${savedUser.email}, Saved Role: ${savedUser.role}`);
 
     // Generate JWT token
     const token = JWTAuthService.generateToken(savedUser);

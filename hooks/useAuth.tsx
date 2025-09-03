@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch current user on app load
   const fetchCurrentUser = async () => {
     try {
+      console.log('🔍 Checking existing authentication...');
       const response = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include' // Include cookies
@@ -93,12 +94,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔓 User is authenticated');
+        console.log('👤 Current User:', data.user);
+        console.log('🎭 Current Role:', data.user?.role);
         setUser(data.user);
       } else {
+        console.log('🔒 No authentication found');
         setUser(null);
       }
     } catch (error) {
-      console.error('Error fetching current user:', error);
+      console.error('❌ Error fetching current user:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -131,6 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Login API response data:', data);
 
       if (response.ok) {
+        console.log('✅ Login successful!');
+        console.log('👤 User Data:', data.user);
+        console.log('🎭 User Role:', data.user?.role);
+        console.log('📧 User Email:', data.user?.email);
+        console.log('👋 Welcome:', `${data.user?.firstName} ${data.user?.lastName}`);
+        
         setUser(data.user);
         return { success: true };
       } else {
