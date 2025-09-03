@@ -10,9 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Building2, Eye, EyeOff, CheckCircle, Users, UserCheck } from "lucide-react"
+import { Building2, Eye, EyeOff, CheckCircle } from "lucide-react"
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -22,7 +21,6 @@ export default function SignupPage() {
     phone: "",
     password: "",
     confirmPassword: "",
-    role: "guest", // Default to guest
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -69,7 +67,7 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      console.log(`📝 Signup Form - Email: ${formData.email}, Role: ${formData.role}`);
+      console.log(`📝 Signup Form - Email: ${formData.email}, Role: guest`);
       
       // First send OTP for email verification
       const response = await fetch('/api/auth/otp/send', {
@@ -86,9 +84,10 @@ export default function SignupPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Store signup data temporarily in sessionStorage
-        sessionStorage.setItem('signupData', JSON.stringify(formData))
-        console.log(`💾 Stored signup data with role: ${formData.role}`);
+        // Store signup data temporarily in sessionStorage with guest role
+        const signupDataWithRole = { ...formData, role: "guest" };
+        sessionStorage.setItem('signupData', JSON.stringify(signupDataWithRole))
+        console.log(`💾 Stored signup data with role: guest`);
         
         // Redirect to OTP verification with signup type
         router.push(`/auth/verify-otp?sessionId=${data.sessionId}&email=${encodeURIComponent(formData.email)}&type=signup`)
@@ -104,14 +103,7 @@ export default function SignupPage() {
 
   if (success) {
     const getRoleMessage = () => {
-      switch (formData.role) {
-        case 'investor':
-          return 'Your investor account has been created successfully. You can now invest in real estate projects!'
-        case 'guest':
-          return 'Your guest account has been created successfully. You can now browse and explore properties!'
-        default:
-          return 'Your account has been created successfully!'
-      }
+      return 'Your guest account has been created successfully. You can now browse and explore properties!'
     }
 
     return (
@@ -192,35 +184,6 @@ export default function SignupPage() {
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">Account Type</Label>
-              <Select value={formData.role} onValueChange={(value) => handleInputChange("role", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="guest">
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Guest</div>
-                        <div className="text-xs text-muted-foreground">Browse and explore properties</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="investor">
-                    <div className="flex items-center space-x-2">
-                      <UserCheck className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">Investor</div>
-                        <div className="text-xs text-muted-foreground">Invest in real estate projects</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">

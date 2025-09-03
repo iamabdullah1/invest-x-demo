@@ -106,15 +106,9 @@ export default function OTPVerificationPage() {
                 // Refresh user context to get the new user state
                 await refreshUser()
                 
-                // Redirect based on role
+                // All new signups are guests, redirect to home
                 setTimeout(() => {
-                  if (userData.role === 'admin') {
-                    router.push('/admin')
-                  } else if (userData.role === 'investor') {
-                    router.push('/dashboard')
-                  } else {
-                    router.push('/') // guest users go to home
-                  }
+                  router.push('/') // guest users go to home
                 }, 1500)
               } else {
                 setError(registerData.error || 'Failed to create account')
