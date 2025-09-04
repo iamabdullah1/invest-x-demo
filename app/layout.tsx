@@ -6,6 +6,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AppShell } from "@/components/app-shell"
 import { AuthProvider } from "@/hooks/useAuth"
+import { ConditionalLayout } from "@/components/conditional-layout"
 
 export const metadata: Metadata = {
   title: "InvestX - Real Estate Investment Platform",
@@ -32,7 +33,7 @@ html {
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <AppShell>{children}</AppShell>
+            <ConditionalLayout>{children}</ConditionalLayout>
           </AuthProvider>
         </ThemeProvider>
       </body>

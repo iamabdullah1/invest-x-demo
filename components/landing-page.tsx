@@ -32,11 +32,18 @@ export function LandingPage() {
   }, [user, router])
 
   return (
-    <div className="space-y-16">
+    <div className="container mx-auto px-4 py-8 space-y-16">
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-primary/10 rounded-3xl p-8 md:p-16">
         <div className="absolute inset-0 bg-[url('/modern-pakistani-cityscape.png')] bg-cover bg-center opacity-10" />
         <div className="relative text-center space-y-8">
           <div className="space-y-6">
+            {/* Logo */}
+            <div className="flex justify-center">
+              <Link href="/" className="flex items-center space-x-2">
+                <Building2 className="h-12 w-12 text-primary" />
+                <span className="text-3xl font-bold text-foreground">InvestX</span>
+              </Link>
+            </div>
             <Badge variant="secondary" className="text-sm px-4 py-2">
               🇵🇰 Pakistan's Leading Real Estate Investment Platform
             </Badge>
@@ -51,14 +58,26 @@ export function LandingPage() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button asChild size="lg" className="text-lg px-8 py-6">
-              <Link href="/projects">
-                Explore Projects <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-transparent" asChild>
-              <Link href="/auth/signup">Start Investing Today</Link>
-            </Button>
+            {user ? (
+              // Authenticated user buttons
+              <Button asChild size="lg" className="text-lg px-8 py-6">
+                <Link href="/projects">
+                  Explore Projects <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            ) : (
+              // Non-authenticated user buttons
+              <>
+                <Button asChild size="lg" className="text-lg px-8 py-6">
+                  <Link href="/auth/login">
+                    Sign In to Explore <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-transparent" asChild>
+                  <Link href="/auth/signup">Create Account</Link>
+                </Button>
+              </>
+            )}
           </div>
           <div className="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground pt-4">
             <div className="flex items-center gap-2">
