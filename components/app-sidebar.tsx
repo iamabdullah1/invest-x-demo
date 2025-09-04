@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
 import {
   Home,
   Building2,
@@ -43,49 +43,49 @@ const navItems: NavItem[] = [
     title: "Projects",
     href: "/projects",
     icon: Building2,
-    roles: ["guest", "investor", "admin"],
+    roles: ["guest", "investor", ],
   },
   {
     title: "Recommendations",
     href: "/recommendations",
     icon: Sparkles,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Compare",
     href: "/compare",
     icon: GitCompare,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Wishlist",
     href: "/wishlist",
     icon: Heart,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Cart",
     href: "/cart",
     icon: ShoppingCart,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Checkout",
     href: "/checkout",
     icon: CreditCard,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Portfolio",
     href: "/portfolio",
     icon: Briefcase,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Notifications",
     href: "/notifications",
     icon: Bell,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
 ]
 
@@ -94,7 +94,7 @@ const authItems: NavItem[] = [
     title: "Login",
     href: "/auth/login",
     icon: LogIn,
-    roles: ["guest"],
+    roles: ["guest","investor"],
   },
   {
     title: "Sign Up",
@@ -144,12 +144,9 @@ const adminItems: NavItem[] = [
 ]
 
 export function AppSidebar() {
-  const [currentRole, setCurrentRole] = useState<UserRole>("guest")
+  const { user } = useAuth()
   const pathname = usePathname()
-
-  useEffect(() => {
-    setCurrentRole(getRole())
-  }, [])
+  const currentRole = user?.role || "guest"
 
   const isInAdminSection = pathname.startsWith("/admin")
 

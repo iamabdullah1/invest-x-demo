@@ -143,6 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('👋 Welcome:', `${data.user?.firstName} ${data.user?.lastName}`);
         
         setUser(data.user);
+        // Handle role-based redirect
+        if (data.user.role === 'admin') {
+          window.location.href = '/admin';
+        } else if (data.user.role === 'investor') {
+          window.location.href = '/dashboard';
+        }
         return { success: true };
       } else {
         setError(data.error);
