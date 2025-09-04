@@ -385,7 +385,7 @@ projectSchema.index({ type: 1 });
 projectSchema.index({ featured: 1 });
 projectSchema.index({ createdAt: -1 });
 projectSchema.index({ fundingDeadline: 1 });
-projectSchema.index({ slug: 1 });
+// slug index is already created by unique: true, no need to duplicate
 projectSchema.index({ tags: 1 });
 
 // Compound indexes

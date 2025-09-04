@@ -202,8 +202,8 @@ transactionSchema.index({ userId: 1 });
 transactionSchema.index({ status: 1 });
 transactionSchema.index({ type: 1 });
 transactionSchema.index({ category: 1 });
-transactionSchema.index({ transactionId: 1 });
-transactionSchema.index({ referenceId: 1 });
+// transactionId index is already created by unique: true, no need to duplicate
+// referenceId index is already created by sparse: true, no need to duplicate
 transactionSchema.index({ createdAt: -1 });
 transactionSchema.index({ completedAt: -1 });
 
