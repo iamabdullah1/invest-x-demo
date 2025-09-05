@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         // Handle role-based redirect
         if (data.user.role === 'admin') {
-          window.location.href = '/admin';
+          router.push('/admin');
         } else if (data.user.role === 'investor') {
           window.location.href = '/dashboard';
         } else if (data.user.role === 'guest') {
