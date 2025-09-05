@@ -1,11 +1,16 @@
-import connectDB from './mongodb';
+import connectDB from './mongodb-optimized';
 import { User, Project, Investment, Transaction } from '../models';
 import type { IUser, IProject, IInvestment, ITransaction } from '../models';
 
 // Database service class for common operations
 export class DatabaseService {
-  // Ensure database connection (only call when needed)
+  // Optimized database connection - uses connection pooling
   static async connect() {
+    return await connectDB();
+  }
+
+  // Initialize connection once at startup
+  private static async ensureConnection() {
     return await connectDB();
   }
 
@@ -103,7 +108,7 @@ export class DatabaseService {
 
   // Investment operations
   static async createInvestment(investmentData: Partial<IInvestment>): Promise<IInvestment> {
-    await this.connect();
+    await this.ensureConnection();
     const investment = new Investment(investmentData);
     
     // Start a transaction to ensure data consistency
@@ -148,14 +153,12 @@ export class DatabaseService {
   }
 
   static async getUserInvestments(userId: string): Promise<IInvestment[]> {
-    await this.connect();
     return await Investment.find({ userId })
       .populate('projectId', 'title location city type status expectedReturn')
       .sort({ investmentDate: -1 });
   }
 
   static async getProjectInvestments(projectId: string): Promise<IInvestment[]> {
-    await this.connect();
     return await Investment.find({ projectId })
       .populate('userId', 'firstName lastName email')
       .sort({ investmentDate: -1 });
@@ -163,18 +166,15 @@ export class DatabaseService {
 
   // Transaction operations
   static async createTransaction(transactionData: Partial<ITransaction>): Promise<ITransaction> {
-    await this.connect();
     const transaction = new Transaction(transactionData);
     return await transaction.save();
   }
 
   static async findTransactionById(id: string): Promise<ITransaction | null> {
-    await this.connect();
     return await Transaction.findById(id).populate('userId', 'firstName lastName email');
   }
 
   static async getUserTransactions(userId: string, status?: string): Promise<ITransaction[]> {
-    await this.connect();
     const query: any = { userId };
     if (status) query.status = status;
     
@@ -188,7 +188,6 @@ export class DatabaseService {
     status: string, 
     additionalData?: any
   ): Promise<ITransaction | null> {
-    await this.connect();
     const updateData = { status, ...additionalData };
     
     if (status === 'completed') {
@@ -200,7 +199,7 @@ export class DatabaseService {
 
   // Analytics and statistics
   static async getDashboardStats(userId?: string) {
-    await this.connect();
+    await this.ensureConnection();
     
     const [userStats, projectStats, investmentStats, transactionStats] = await Promise.all([
       // User statistics

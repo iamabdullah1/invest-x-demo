@@ -13,19 +13,22 @@ export async function POST(request: NextRequest) {
     // Test database connection
     if (action === 'test-db') {
       try {
+        const startTime = Date.now();
         await connectDB();
-        console.log('✅ Database connection successful');
+        const endTime = Date.now();
+        console.log(`✅ Database connection successful in ${endTime - startTime}ms`);
         return NextResponse.json({ 
           success: true, 
           message: 'Database connection successful',
+          connectionTime: `${endTime - startTime}ms`,
           timestamp: new Date().toISOString()
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Database connection failed:', error);
         return NextResponse.json({ 
           success: false, 
           error: 'Database connection failed',
-          details: error.message 
+          details: error?.message || 'Unknown error'
         });
       }
     }
