@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Building2, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 
-export default function LoginPage() {
+export default function LoginPage(): React.JSX.Element {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
