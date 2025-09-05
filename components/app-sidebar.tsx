@@ -94,13 +94,13 @@ const authItems: NavItem[] = [
     title: "Login",
     href: "/auth/login",
     icon: LogIn,
-    roles: ["guest","investor"],
+    roles: ["guest"], // Only for unauthenticated users
   },
   {
     title: "Sign Up",
     href: "/auth/signup",
     icon: UserPlus,
-    roles: ["guest"],
+    roles: ["guest"], // Only for unauthenticated users
   },
 ]
 
@@ -144,7 +144,7 @@ const adminItems: NavItem[] = [
 ]
 
 export function AppSidebar() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const pathname = usePathname()
   const currentRole = user?.role || "guest"
 
@@ -215,11 +215,11 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Auth Items (for guests) */}
-        {currentRole === "guest" && (
+        {/* Auth Items (only for unauthenticated users) */}
+        {!isAuthenticated && (
           <div className="pt-4 border-t border-sidebar-border">
             <div className="space-y-1">
-              {filterItemsByRole(authItems).map((item) => {
+              {authItems.map((item) => {
                 const Icon = item.icon
                 return (
                   <Link

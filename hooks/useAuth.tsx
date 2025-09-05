@@ -148,6 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.location.href = '/admin';
         } else if (data.user.role === 'investor') {
           window.location.href = '/dashboard';
+        } else if (data.user.role === 'guest') {
+          window.location.href = '/projects';
         }
         return { success: true };
       } else {
@@ -209,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setError(null);
-      router.push('/auth/login');
+      router.push('/');
     }
   };
 

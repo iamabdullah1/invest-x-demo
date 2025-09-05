@@ -106,9 +106,9 @@ export default function OTPVerificationPage() {
                 // Refresh user context to get the new user state
                 await refreshUser()
                 
-                // All new signups are guests, redirect to home
+                // All new signups are guests, redirect to projects
                 setTimeout(() => {
-                  router.push('/') // guest users go to home
+                  router.push('/projects') // guest users go to projects
                 }, 1500)
               } else {
                 setError(registerData.error || 'Failed to create account')

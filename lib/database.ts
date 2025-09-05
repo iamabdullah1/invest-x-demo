@@ -75,20 +75,24 @@ export class DatabaseService {
     const { page = 1, limit = 10, ...filterQuery } = filters;
     const skip = (page - 1) * limit;
     
-    // Build query
+    // Build optimized query
     const query: any = {};
     if (filterQuery.status) query.status = filterQuery.status;
     if (filterQuery.city) query.city = filterQuery.city;
     if (filterQuery.type) query.type = filterQuery.type;
     if (filterQuery.featured !== undefined) query.featured = filterQuery.featured;
     
-    const projects = await Project.find(query)
-      .populate('createdBy', 'firstName lastName email')
-      .sort({ featured: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-    
-    const total = await Project.countDocuments(query);
+    // Optimized parallel queries with selective field population
+    const [projects, total] = await Promise.all([
+      Project.find(query)
+        .populate('createdBy', 'firstName lastName email') // Only needed user fields
+        .select('title description location city type status targetAmount raisedAmount images featured expectedReturn fundingDeadline') // Only needed project fields
+        .sort({ featured: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(), // Better performance for read-only operations
+      Project.countDocuments(query)
+    ]);
     
     return {
       projects,
@@ -152,16 +156,58 @@ export class DatabaseService {
     }
   }
 
-  static async getUserInvestments(userId: string): Promise<IInvestment[]> {
-    return await Investment.find({ userId })
-      .populate('projectId', 'title location city type status expectedReturn')
-      .sort({ investmentDate: -1 });
+  static async getUserInvestments(userId: string, page: number = 1, limit: number = 20): Promise<{
+    investments: IInvestment[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * limit;
+    
+    // Optimized query with pagination and selective field population
+    const [investments, total] = await Promise.all([
+      Investment.find({ userId })
+        .populate('projectId', 'title location city type status expectedReturn targetAmount raisedAmount') // Only needed fields
+        .sort({ investmentDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(), // Use lean() for better performance when no document methods needed
+      Investment.countDocuments({ userId })
+    ]);
+
+    return {
+      investments,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
-  static async getProjectInvestments(projectId: string): Promise<IInvestment[]> {
-    return await Investment.find({ projectId })
-      .populate('userId', 'firstName lastName email')
-      .sort({ investmentDate: -1 });
+  static async getProjectInvestments(projectId: string, page: number = 1, limit: number = 50): Promise<{
+    investments: IInvestment[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * limit;
+    
+    // Optimized query with pagination and selective field population
+    const [investments, total] = await Promise.all([
+      Investment.find({ projectId })
+        .populate('userId', 'firstName lastName email avatar') // Only needed fields
+        .sort({ investmentDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(), // Use lean() for better performance
+      Investment.countDocuments({ projectId })
+    ]);
+
+    return {
+      investments,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   // Transaction operations
@@ -171,16 +217,29 @@ export class DatabaseService {
   }
 
   static async findTransactionById(id: string): Promise<ITransaction | null> {
-    return await Transaction.findById(id).populate('userId', 'firstName lastName email');
+    return await Transaction.findById(id)
+      .populate('userId', 'firstName lastName email')
+      .lean();
   }
 
-  static async getUserTransactions(userId: string, status?: string): Promise<ITransaction[]> {
+  static async getUserTransactions(
+    userId: string, 
+    status?: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<ITransaction[]> {
     const query: any = { userId };
     if (status) query.status = status;
     
+    const skip = (page - 1) * limit;
+    
     return await Transaction.find(query)
-      .populate('projectId', 'title')
-      .sort({ createdAt: -1 });
+      .populate('projectId', 'title image')
+      .select('amount type status createdAt projectId description')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
   }
 
   static async updateTransactionStatus(
@@ -194,7 +253,11 @@ export class DatabaseService {
       updateData.completedAt = new Date();
     }
     
-    return await Transaction.findByIdAndUpdate(id, updateData, { new: true });
+    return await Transaction.findByIdAndUpdate(
+      id, 
+      updateData, 
+      { new: true, select: 'status amount type completedAt' }
+    ).lean();
   }
 
   // Analytics and statistics

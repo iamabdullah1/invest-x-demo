@@ -34,10 +34,9 @@ export default function LoginPage() {
       console.log('📊 Login result:', result);
 
       if (result.success) {
-        console.log('🎉 Login successful! Redirecting to dashboard...');
-        // The useAuth hook handles setting user state
-        // Redirect will happen after auth context updates
-        router.push('/dashboard')
+        console.log('🎉 Login successful! Redirecting...');
+        // The useAuth hook handles role-based redirects automatically
+        // No need for manual redirect here as useAuth will handle it
       } else {
         console.log('❌ Login failed:', result.error);
         setError(result.error || 'Login failed')
