@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { DatabaseService } from '@/lib/database';
-import { InvestorVerification } from '@/models';
+import { v4 as uuidv4 } from 'uuid';
+import CloudinaryService from '@/lib/cloudinary';
+import { getCollection } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,57 +52,91 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file sizes (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file sizes (500KB limit for ID cards)
+    const maxSize = 500 * 1024; // 500KB
     if (frontIdCard.size > maxSize || backIdCard.size > maxSize) {
       return NextResponse.json(
-        { error: 'File size must be less than 5MB' },
+        { error: 'ID card file size must be less than 500KB' },
         { status: 400 }
       );
     }
 
-    // Create upload directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'verifications');
-    await mkdir(uploadDir, { recursive: true });
+    // Generate unique verification ID
+    const verificationId = uuidv4();
+    
+    console.log(`📤 Starting Cloudinary upload for verification: ${verificationId}`);
 
-    // Generate unique filenames
-    const timestamp = Date.now();
-    const frontFileName = `${timestamp}_${email.replace('@', '_')}_front.${frontIdCard.name.split('.').pop()}`;
-    const backFileName = `${timestamp}_${email.replace('@', '_')}_back.${backIdCard.name.split('.').pop()}`;
-
-    // Save files
+    // Convert files to buffers
     const frontIdBytes = await frontIdCard.arrayBuffer();
     const backIdBytes = await backIdCard.arrayBuffer();
     
-    const frontIdPath = join(uploadDir, frontFileName);
-    const backIdPath = join(uploadDir, backFileName);
-    
-    await writeFile(frontIdPath, Buffer.from(frontIdBytes));
-    await writeFile(backIdPath, Buffer.from(backIdBytes));
+    const frontIdBuffer = Buffer.from(frontIdBytes);
+    const backIdBuffer = Buffer.from(backIdBytes);
 
-    // Create verification request in database
-    const verification = new InvestorVerification({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone.trim(),
-      address: address.trim(),
-      city: city.trim(),
-      postalCode: postalCode.trim(),
-      frontIdCardPath: `/uploads/verifications/${frontFileName}`,
-      backIdCardPath: `/uploads/verifications/${backFileName}`,
-      status: 'pending'
+    // Upload to Cloudinary
+    const uploadResult = await CloudinaryService.uploadVerificationDocuments(
+      frontIdBuffer,
+      backIdBuffer,
+      verificationId
+    );
+
+    if (!uploadResult.success) {
+      console.error('Cloudinary upload failed:', uploadResult.error);
+      return NextResponse.json(
+        { error: 'Failed to upload verification documents. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    console.log(`✅ Cloudinary upload successful for verification: ${verificationId}`);
+
+    // Prepare verification data for database
+    const verificationData = {
+      verificationId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      address,
+      city,
+      postalCode,
+      frontIdUrl: uploadResult.frontId?.url,
+      frontIdPublicId: uploadResult.frontId?.public_id,
+      backIdUrl: uploadResult.backId?.url,
+      backIdPublicId: uploadResult.backId?.public_id,
+      status: 'pending',
+      submittedAt: new Date(),
+      cloudinaryUpload: true,
+    };
+
+    // Save to MongoDB
+    try {
+      const verificationCollection = await getCollection('investor_verifications');
+      const insertResult = await verificationCollection.insertOne(verificationData);
+      
+      console.log(`💾 Verification saved to MongoDB with ID: ${insertResult.insertedId}`);
+    } catch (dbError: any) {
+      console.error('❌ Database save error:', dbError);
+      // Continue anyway - Cloudinary upload was successful
+    }
+
+    console.log('✅ Investor verification submitted successfully:', {
+      verificationId,
+      email,
+      frontIdUrl: uploadResult.frontId?.url,
+      backIdUrl: uploadResult.backId?.url,
     });
 
-    await verification.save();
-
-    console.log(`📋 New investor verification request submitted by ${email}`);
-
+    // Send success response
     return NextResponse.json({
       success: true,
       message: 'Verification request submitted successfully',
-      verificationId: verification._id,
-      status: 'pending'
+      verificationId,
+      status: 'pending',
+      documentUrls: {
+        frontId: uploadResult.frontId?.url,
+        backId: uploadResult.backId?.url,
+      }
     });
 
   } catch (error: any) {

@@ -42,9 +42,9 @@ export default function InvestorVerificationPage() {
         return
       }
       
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB')
+      // Validate file size (500KB limit for ID cards)
+      if (file.size > 500 * 1024) {
+        setError('ID card file size must be less than 500KB')
         return
       }
 
@@ -311,7 +311,7 @@ export default function InvestorVerificationPage() {
                         <div>
                           <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                           <p className="text-sm text-gray-600">Click to upload front ID card</p>
-                          <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                          <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 500KB</p>
                         </div>
                       )}
                       <Input
@@ -364,7 +364,7 @@ export default function InvestorVerificationPage() {
                         <div>
                           <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                           <p className="text-sm text-gray-600">Click to upload back ID card</p>
-                          <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB</p>
+                          <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 500KB</p>
                         </div>
                       )}
                       <Input
