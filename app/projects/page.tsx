@@ -16,6 +16,7 @@ export default function ProjectsPage() {
         <h1 className="text-3xl font-bold text-foreground">Investment Projects</h1>
         <p className="text-muted-foreground">Discover premium real estate investment opportunities across Pakistan</p>
       </div>
+      
 
       {/* Filters */}
       <Card>
