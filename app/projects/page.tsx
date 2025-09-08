@@ -1,174 +1,292 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building2, MapPin, Clock, TrendingUp, Search } from "lucide-react"
-import Link from "next/link"
-import { mockProjects, formatCurrency, calculateProgress } from "@/lib/mockData"
+import { Badge } from "@/components/ui/badge"
+import { Search, MapPin, DollarSign, Calendar, Users } from "lucide-react"
+
+interface Project {
+  _id: string
+  title: string
+  description: string
+  location: {
+    city: string
+    area: string
+    address: string
+  }
+  targetAmount: number
+  raisedAmount: number
+  expectedReturn: string
+  duration: string
+  riskLevel: 'Low' | 'Medium' | 'High'
+  status: 'Active' | 'Completed' | 'Upcoming'
+  images: string[]
+  createdAt: string
+  updatedAt: string
+}
 
 export default function ProjectsPage() {
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Investment Projects</h1>
-        <p className="text-muted-foreground">Discover premium real estate investment opportunities across Pakistan</p>
+  const [projects, setProjects] = useState<Project[]>([])
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedFilter, setSelectedFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchProjects()
+  }, [])
+
+  useEffect(() => {
+    filterProjects()
+  }, [projects, searchTerm, selectedFilter])
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('/api/projects')
+      if (response.ok) {
+        const data = await response.json()
+        setProjects(data.projects)
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filterProjects = () => {
+    let filtered = projects
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(project =>
+        project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.location.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.location.area.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    // Filter by status
+    if (selectedFilter !== 'all') {
+      filtered = filtered.filter(project => project.status === selectedFilter)
+    }
+
+    setFilteredProjects(filtered)
+  }
+
+  const getRiskBadgeColor = (risk: string) => {
+    switch (risk) {
+      case 'Low': return 'bg-green-100 text-green-800 border-green-200'
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'High': return 'bg-red-100 text-red-800 border-red-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'Active': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'Completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'Upcoming': return 'bg-purple-100 text-purple-800 border-purple-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const calculateProgress = (raised: number, target: number) => {
+    return Math.min((raised / target) * 100, 100)
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading projects...</div>
+        </div>
       </div>
-        
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Find Your Perfect Investment</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search projects..." className="pl-10" />
-            </div>
-            <Select>
-              <SelectTrigger>
-                <SelectValue placeholder="City" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="karachi">Karachi</SelectItem>
-                <SelectItem value="lahore">Lahore</SelectItem>
-                <SelectItem value="islamabad">Islamabad</SelectItem>
-                <SelectItem value="rawalpindi">Rawalpindi</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select>
-              <SelectTrigger>
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="residential">Residential</SelectItem>
-                <SelectItem value="commercial">Commercial</SelectItem>
-                <SelectItem value="mixed">Mixed Use</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select>
-              <SelectTrigger>
-                <SelectValue placeholder="Investment Range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">PKR 5L - 20L</SelectItem>
-                <SelectItem value="medium">PKR 20L - 50L</SelectItem>
-                <SelectItem value="high">PKR 50L+</SelectItem>
-              </SelectContent>
-            </Select>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-4">Investment Projects</h1>
+        <p className="text-gray-600 mb-6">
+          Discover exciting investment opportunities across various sectors and locations.
+        </p>
+
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Search projects by title, location, or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-2">
+            <Button
+              variant={selectedFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('all')}
+              size="sm"
+            >
+              All
+            </Button>
+            <Button
+              variant={selectedFilter === 'Active' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('Active')}
+              size="sm"
+            >
+              Active
+            </Button>
+            <Button
+              variant={selectedFilter === 'Upcoming' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('Upcoming')}
+              size="sm"
+            >
+              Upcoming
+            </Button>
+            <Button
+              variant={selectedFilter === 'Completed' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('Completed')}
+              size="sm"
+            >
+              Completed
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockProjects.map((project) => (
-          <Card key={project.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="aspect-video bg-muted overflow-hidden">
-              <img
-                src={project.images[0] || "/placeholder.svg"}
-                alt={project.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <CardHeader className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Badge
-                  variant={
-                    project.status === "active" ? "default" : project.status === "funded" ? "secondary" : "outline"
-                  }
-                >
-                  {project.status}
-                </Badge>
-                <Badge variant="outline" className="text-green-600">
-                  {project.expectedReturn}% Returns
-                </Badge>
-              </div>
-              <div>
-                <CardTitle className="text-lg">{project.title}</CardTitle>
-                <CardDescription className="flex items-center mt-1">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  {project.location}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Progress */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Funding Progress</span>
-                  <span className="font-medium">{calculateProgress(project.raisedAmount, project.targetAmount)}%</span>
-                </div>
-                <Progress value={calculateProgress(project.raisedAmount, project.targetAmount)} />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{formatCurrency(project.raisedAmount)} raised</span>
-                  <span>{formatCurrency(project.targetAmount)} target</span>
-                </div>
-              </div>
-
-              {/* Key Details */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Min. Investment</div>
-                  <div className="font-medium">{formatCurrency(project.minInvestment)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Duration</div>
-                  <div className="font-medium flex items-center">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {project.duration} months
+      {filteredProjects.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-gray-500 mb-4">
+            {searchTerm || selectedFilter !== 'all' 
+              ? 'No projects match your current filters.' 
+              : 'No projects available at the moment.'}
+          </div>
+          {(searchTerm || selectedFilter !== 'all') && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('')
+                setSelectedFilter('all')
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => {
+            const progress = calculateProgress(project.raisedAmount, project.targetAmount)
+            
+            return (
+              <Card key={project._id} className="hover:shadow-lg transition-shadow duration-200">
+                {project.images && project.images.length > 0 && (
+                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
+                    <img
+                      src={project.images[0]}
+                      alt={project.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                    />
                   </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Area</div>
-                  <div className="font-medium">{project.area.toLocaleString()} sq ft</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Price/sq ft</div>
-                  <div className="font-medium">{formatCurrency(project.pricePerSqFt)}</div>
-                </div>
-              </div>
+                )}
+                
+                <CardHeader className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
+                    <Badge className={getStatusBadgeColor(project.status)}>
+                      {project.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      <span>{project.location.area}, {project.location.city}</span>
+                    </div>
+                    <Badge className={getRiskBadgeColor(project.riskLevel)}>
+                      {project.riskLevel} Risk
+                    </Badge>
+                  </div>
+                </CardHeader>
 
-              {/* Type & Risk */}
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary">
-                  <Building2 className="h-3 w-3 mr-1" />
-                  {project.type}
-                </Badge>
-                <Badge
-                  variant={
-                    project.riskLevel === "low"
-                      ? "default"
-                      : project.riskLevel === "medium"
-                        ? "secondary"
-                        : "destructive"
-                  }
-                >
-                  {project.riskLevel} risk
-                </Badge>
-              </div>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600 text-sm line-clamp-3">
+                    {project.description}
+                  </p>
 
-              {/* Action Button */}
-              <Button asChild className="w-full">
-                <Link href={`/projects/${project.id}`}>
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  View Details & Invest
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Progress</span>
+                      <span className="font-medium">{progress.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">
+                        Raised: {formatCurrency(project.raisedAmount)}
+                      </span>
+                      <span className="font-medium">
+                        Target: {formatCurrency(project.targetAmount)}
+                      </span>
+                    </div>
+                  </div>
 
-      {/* Load More */}
-      <div className="text-center">
-        <Button variant="outline" size="lg">
-          Load More Projects
-        </Button>
-      </div>
+                  {/* Key Details */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <div>
+                        <div className="text-gray-600">Expected Return</div>
+                        <div className="font-medium">{project.expectedReturn}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <div>
+                        <div className="text-gray-600">Duration</div>
+                        <div className="font-medium">{project.duration}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <Button 
+                    className="w-full mt-4" 
+                    disabled={project.status !== 'Active'}
+                  >
+                    {project.status === 'Active' ? 'Invest Now' : 
+                     project.status === 'Completed' ? 'View Details' : 
+                     'Coming Soon'}
+                  </Button>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

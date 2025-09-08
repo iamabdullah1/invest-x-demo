@@ -204,6 +204,58 @@ export class CloudinaryService {
   }
 
   /**
+   * Upload project image to Cloudinary
+   * @param imageBuffer - Image file buffer
+   * @param projectId - Project ID for organization
+   * @param imageName - Name/identifier for the image
+   * @param originalFileName - Original filename
+   */
+  static async uploadProjectImage(
+    imageBuffer: Buffer,
+    projectId: string,
+    imageName: string,
+    originalFileName: string
+  ) {
+    try {
+      console.log(`📤 Uploading project image: ${imageName} for project ${projectId}`);
+
+      const result = await this.uploadFile(imageBuffer, {
+        folder: `investx/projects/${projectId}`,
+        public_id: `${imageName}_${Date.now()}`,
+        resource_type: 'image',
+        transformation: [
+          { quality: 'auto:good' },
+          { width: 1200, height: 800, crop: 'limit' },
+          { format: 'webp' }
+        ]
+      });
+
+      if (result.success) {
+        console.log(`✅ Project image uploaded successfully: ${result.url}`);
+        return {
+          success: true,
+          url: result.url,
+          public_id: result.public_id,
+          thumbnail: this.getThumbnailUrl(result.public_id!, 400, 300)
+        };
+      } else {
+        console.error(`❌ Project image upload failed: ${result.error}`);
+        return {
+          success: false,
+          error: result.error
+        };
+      }
+
+    } catch (error: any) {
+      console.error('Project image upload error:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
    * Get optimized image URL with transformations
    * @param publicId - Public ID of the image
    * @param transformations - Cloudinary transformations
