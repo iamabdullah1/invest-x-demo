@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, MapPin, DollarSign, Calendar, Users } from "lucide-react"
+import Link from "next/link"
 
 interface Project {
   _id: string
@@ -21,7 +22,7 @@ interface Project {
   expectedReturn: string
   duration: string
   riskLevel: 'Low' | 'Medium' | 'High'
-  status: 'Active' | 'Completed' | 'Upcoming'
+  status: 'active' | 'completed' | 'upcoming' | 'funded'
   images: string[]
   createdAt: string
   updatedAt: string
@@ -88,9 +89,10 @@ export default function ProjectsPage() {
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'Completed': return 'bg-green-100 text-green-800 border-green-200'
-      case 'Upcoming': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'active': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'upcoming': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'funded': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
@@ -138,34 +140,22 @@ export default function ProjectsPage() {
               className="pl-10"
             />
           </div>
+          
+          {/* Simple filter options for investors */}
           <div className="flex gap-2">
             <Button
               variant={selectedFilter === 'all' ? 'default' : 'outline'}
               onClick={() => setSelectedFilter('all')}
               size="sm"
             >
-              All
+              All Projects
             </Button>
             <Button
-              variant={selectedFilter === 'Active' ? 'default' : 'outline'}
-              onClick={() => setSelectedFilter('Active')}
+              variant={selectedFilter === 'active' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('active')}
               size="sm"
             >
-              Active
-            </Button>
-            <Button
-              variant={selectedFilter === 'Upcoming' ? 'default' : 'outline'}
-              onClick={() => setSelectedFilter('Upcoming')}
-              size="sm"
-            >
-              Upcoming
-            </Button>
-            <Button
-              variant={selectedFilter === 'Completed' ? 'default' : 'outline'}
-              onClick={() => setSelectedFilter('Completed')}
-              size="sm"
-            >
-              Completed
+              Available Now
             </Button>
           </div>
         </div>
@@ -212,7 +202,7 @@ export default function ProjectsPage() {
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
                     <Badge className={getStatusBadgeColor(project.status)}>
-                      {project.status}
+                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
                     </Badge>
                   </div>
                   
@@ -273,14 +263,16 @@ export default function ProjectsPage() {
                   </div>
 
                   {/* Action Button */}
-                  <Button 
-                    className="w-full mt-4" 
-                    disabled={project.status !== 'Active'}
-                  >
-                    {project.status === 'Active' ? 'Invest Now' : 
-                     project.status === 'Completed' ? 'View Details' : 
-                     'Coming Soon'}
-                  </Button>
+                  <Link href={`/projects/${project._id}`}>
+                    <Button 
+                      className="w-full mt-4" 
+                      disabled={project.status !== 'active'}
+                    >
+                      {project.status === 'active' ? 'View Details' : 
+                       project.status === 'completed' ? 'View Details' : 
+                       'Coming Soon'}
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
             )

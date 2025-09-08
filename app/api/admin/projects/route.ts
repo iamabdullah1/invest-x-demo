@@ -328,6 +328,10 @@ export async function PUT(request: NextRequest) {
     const startDate = formData.get('startDate') as string;
     const endDate = formData.get('endDate') as string;
     
+    // Amenities (JSON string)
+    const amenitiesJson = formData.get('amenities') as string;
+    const amenities = amenitiesJson ? JSON.parse(amenitiesJson) : [];
+    
     // Status
     const status = formData.get('status') as string || 'active';
     
@@ -413,6 +417,9 @@ export async function PUT(request: NextRequest) {
       
       // Risk and compliance
       riskLevel,
+      
+      // Amenities
+      amenities,
       
       // Admin fields
       updatedBy: 'admin', // TODO: Get from auth context

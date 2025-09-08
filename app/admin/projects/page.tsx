@@ -217,7 +217,7 @@ export default function AdminProjectsPage() {
                 <CardHeader className="pb-3">
                   {/* Project Image */}
                   <div className="relative h-48 mb-3 overflow-hidden rounded-lg bg-muted">
-                    {project.images.length > 0 ? (
+                    {project.images && project.images.length > 0 ? (
                       <img
                         src={project.images[0]}
                         alt={project.title}
@@ -236,8 +236,16 @@ export default function AdminProjectsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg mb-1">{project.title}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{project.location}</p>
-                      <p className="text-xs text-muted-foreground">{project.developer.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {typeof project.location === 'string' 
+                          ? project.location 
+                          : `${project.location?.area || ''}, ${project.location?.city || ''}`.trim().replace(/^,\s*/, '').replace(/,\s*$/, '') || 'N/A'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {typeof project.developer === 'string' 
+                          ? project.developer 
+                          : project.developer?.name || 'N/A'}
+                      </p>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -246,9 +254,13 @@ export default function AdminProjectsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
+                        <DropdownMenuItem asChild>
+                          <Link href={`/projects/${project._id}`}>
+                            <div className="flex items-center w-full">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </div>
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href={`/admin/projects/${project._id}/edit`}>

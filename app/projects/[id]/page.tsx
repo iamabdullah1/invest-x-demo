@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,34 +10,164 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle } from "lucide-react"
+import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
-import { getProjectById, formatCurrency, calculateProgress } from "@/lib/mockData"
+
+interface Project {
+  _id: string
+  title: string
+  description: string
+  location: {
+    city: string
+    area: string
+    address: string
+  }
+  type: string
+  status: string
+  targetAmount: number
+  raisedAmount: number
+  minInvestment: number
+  expectedReturn: number
+  duration: number
+  area: number
+  pricePerSqFt: number
+  totalValue: number
+  timeline: {
+    projectStart: string
+    expectedCompletion: string
+    phases: Array<{
+      name: string
+      duration: string
+      status: string
+    }>
+  }
+  developer: {
+    name: string
+    experience: string
+    rating: number
+    completedProjects: number
+  }
+  images: string[]
+  riskLevel: string
+  riskFactors: string[]
+  amenities: string[]
+  specifications: {
+    bedrooms?: number
+    bathrooms?: number
+    parking: boolean
+    floor: number
+    facing: string
+  }
+  complianceStatus: {
+    noc: boolean
+    environmentalClearance: boolean
+    buildingApproval: boolean
+    utilityConnections: boolean
+  }
+  totalInvestors: number
+  createdAt: string
+}
 
 export default function ProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const projectId = params.id as string
+  
+  const [project, setProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(true)
   const [investmentAmount, setInvestmentAmount] = useState("")
-  const [isCalculating, setIsCalculating] = useState(false)
+  const [investing, setInvesting] = useState(false)
 
-  const project = getProjectById(params.id as string)
+  useEffect(() => {
+    if (projectId) {
+      fetchProject()
+    }
+  }, [projectId])
 
-  if (!project) {
+  const fetchProject = async () => {
+    try {
+      // Use admin API to get project details (in real app, create a public endpoint)
+      const response = await fetch(`/api/admin/projects?id=${projectId}`)
+      if (response.ok) {
+        const data = await response.json()
+        const projectData = data.projects[0]
+        if (projectData) {
+          setProject(projectData)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const calculateProgress = (raised: number, target: number) => {
+    return Math.min((raised / target) * 100, 100)
+  }
+
+  const getRiskBadgeColor = (risk: string) => {
+    switch (risk) {
+      case 'Low': return 'bg-green-100 text-green-800 border-green-200'
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'High': return 'bg-red-100 text-red-800 border-red-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'upcoming': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'funded': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const handleInvest = () => {
+    setInvesting(true)
+    // TODO: Implement actual investment flow
+    alert('Investment feature coming soon! This would redirect to the investment flow.')
+    setInvesting(false)
+  }
+
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold">Project Not Found</h1>
-        <p className="text-muted-foreground mt-2">The project you're looking for doesn't exist.</p>
-        <Button asChild className="mt-4">
-          <Link href="/projects">Back to Projects</Link>
-        </Button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading project details...</div>
+        </div>
       </div>
     )
   }
 
-  const progressPercentage = calculateProgress(project.raisedAmount, project.targetAmount)
+  if (!project) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
+          <p className="text-gray-600 mb-6">The project you're looking for doesn't exist or has been removed.</p>
+          <Link href="/projects">
+            <Button>Back to Projects</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const progress = calculateProgress(project.raisedAmount, project.targetAmount)
   const remainingAmount = project.targetAmount - project.raisedAmount
   const investmentValue = Number.parseFloat(investmentAmount) || 0
-  const shares = investmentValue > 0 ? Math.floor((investmentValue / project.minInvestment) * 100) : 0
   const projectedReturns = investmentValue * (project.expectedReturn / 100)
 
   const handleAddToCart = () => {
@@ -45,32 +175,69 @@ export default function ProjectDetailPage() {
       alert(`Minimum investment is ${formatCurrency(project.minInvestment)}`)
       return
     }
-    // Add to cart logic here
+
+    // Create cart item
+    const cartItem = {
+      projectId: project._id,
+      projectTitle: project.title,
+      amount: investmentValue,
+      projectImage: project.images && project.images.length > 0 ? project.images[0] : "/placeholder.svg",
+      expectedReturn: project.expectedReturn,
+      location: `${project.location?.area || ''}, ${project.location?.city || ''}`,
+      addedAt: new Date().toISOString()
+    }
+
+    // Get existing cart from localStorage
+    const existingCart = localStorage.getItem('investmentCart')
+    let cartItems = existingCart ? JSON.parse(existingCart) : []
+
+    // Check if item already exists in cart
+    const existingItemIndex = cartItems.findIndex((item: any) => item.projectId === project._id)
+    
+    if (existingItemIndex >= 0) {
+      // Update existing item
+      cartItems[existingItemIndex].amount = investmentValue
+      cartItems[existingItemIndex].addedAt = new Date().toISOString()
+      alert('Investment amount updated in cart!')
+    } else {
+      // Add new item
+      cartItems.push(cartItem)
+      alert('Investment added to cart successfully!')
+    }
+
+    // Save to localStorage
+    localStorage.setItem('investmentCart', JSON.stringify(cartItems))
+
+    // Redirect to cart
     router.push("/cart")
   }
 
   return (
-    <div className="space-y-8">
-      {/* Back Button */}
-      <Button variant="ghost" asChild>
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
         <Link href="/projects">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Projects
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Projects
+          </Button>
         </Link>
-      </Button>
+      </div>
 
-      {/* Hero Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="aspect-video bg-muted rounded-2xl overflow-hidden">
-            <img
-              src={project.images[0] || "/placeholder.svg"}
-              alt={project.title}
-              className="w-full h-full object-cover"
-            />
+      <div className="space-y-8">
+        {/* Hero Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <div className="aspect-video bg-muted rounded-2xl overflow-hidden">
+              <img
+                src={project.images && project.images.length > 0 ? project.images[0] : "/placeholder.svg"}
+                alt={project.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            {project.images.slice(1, 4).map((image, index) => (
+            {(project.images || []).slice(1, 4).map((image, index) => (
               <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
                 <img
                   src={image || "/placeholder.svg"}
@@ -98,7 +265,7 @@ export default function ProjectDetailPage() {
             <h1 className="text-3xl font-bold">{project.title}</h1>
             <p className="text-muted-foreground flex items-center mt-2">
               <MapPin className="h-4 w-4 mr-1" />
-              {project.location}
+              {project.location?.area || 'N/A'}, {project.location?.city || 'N/A'}
             </p>
           </div>
 
@@ -136,9 +303,9 @@ export default function ProjectDetailPage() {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="font-medium">Funding Progress</span>
-                  <span className="font-bold">{progressPercentage}%</span>
+                  <span className="font-bold">{progress.toFixed(1)}%</span>
                 </div>
-                <Progress value={progressPercentage} className="h-3" />
+                <Progress value={progress} className="h-3" />
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>{formatCurrency(project.raisedAmount)} raised</span>
                   <span>{formatCurrency(remainingAmount)} remaining</span>
@@ -169,8 +336,8 @@ export default function ProjectDetailPage() {
               {investmentValue > 0 && (
                 <div className="space-y-2 p-4 bg-muted rounded-lg">
                   <div className="flex justify-between">
-                    <span>Shares:</span>
-                    <span className="font-medium">{shares}</span>
+                    <span>Investment Share:</span>
+                    <span className="font-medium">{((investmentValue / project.targetAmount) * 100).toFixed(2)}%</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Projected Returns:</span>
@@ -222,7 +389,11 @@ export default function ProjectDetailPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Developer:</span>
-                    <span className="font-medium">{project.developer}</span>
+                    <span className="font-medium">
+                      {typeof project.developer === 'string' 
+                        ? project.developer 
+                        : project.developer?.name || 'N/A'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Project Type:</span>
@@ -230,8 +401,24 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>
-                    <span className="font-medium">{project.city}</span>
+                    <span className="font-medium">{project.location?.city || project.city}</span>
                   </div>
+                  {typeof project.developer === 'object' && project.developer && (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Experience:</span>
+                        <span className="font-medium">{project.developer.experience || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Completed Projects:</span>
+                        <span className="font-medium">{project.developer.completedProjects || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Rating:</span>
+                        <span className="font-medium">{project.developer.rating || 'N/A'}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -330,12 +517,18 @@ export default function ProjectDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {project.amenities.map((amenity, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>{amenity}</span>
+                {(project.amenities && project.amenities.length > 0) ? (
+                  project.amenities.map((amenity, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span>{amenity}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    No amenities listed for this project
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
@@ -356,7 +549,9 @@ export default function ProjectDetailPage() {
                   <div>
                     <div className="font-medium">Project Launch</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(project.startDate).toLocaleDateString()}
+                      {project.timeline?.projectStart 
+                        ? new Date(project.timeline.projectStart).toLocaleDateString()
+                        : 'TBD'}
                     </div>
                   </div>
                 </div>
@@ -372,7 +567,9 @@ export default function ProjectDetailPage() {
                   <div>
                     <div className="font-medium">Project Completion</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(project.endDate).toLocaleDateString()}
+                      {project.timeline?.expectedCompletion 
+                        ? new Date(project.timeline.expectedCompletion).toLocaleDateString()
+                        : 'TBD'}
                     </div>
                   </div>
                 </div>

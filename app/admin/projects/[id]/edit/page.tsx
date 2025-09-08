@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -32,6 +33,7 @@ interface Project {
   developer: { name: string }
   images: string[]
   riskLevel: string
+  amenities: string[]
 }
 
 export default function EditProjectPage() {
@@ -44,6 +46,8 @@ export default function EditProjectPage() {
   const [submitting, setSubmitting] = useState(false)
   const [imagePreview, setImagePreview] = useState<string>('')
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [amenities, setAmenities] = useState<string[]>([])
+  const [newAmenity, setNewAmenity] = useState('')
 
   const [formData, setFormData] = useState({
     title: '',
@@ -79,6 +83,7 @@ export default function EditProjectPage() {
         
         if (projectData) {
           setProject(projectData)
+          setAmenities(projectData.amenities || [])
           setFormData({
             title: projectData.title || '',
             description: projectData.description || '',
@@ -136,6 +141,17 @@ export default function EditProjectPage() {
     setImagePreview('')
   }
 
+  const addAmenity = () => {
+    if (newAmenity.trim() && !amenities.includes(newAmenity.trim())) {
+      setAmenities((prev) => [...prev, newAmenity.trim()])
+      setNewAmenity('')
+    }
+  }
+
+  const removeAmenity = (amenity: string) => {
+    setAmenities((prev) => prev.filter((a) => a !== amenity))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -150,6 +166,9 @@ export default function EditProjectPage() {
       Object.entries(formData).forEach(([key, value]) => {
         submitData.append(key, value)
       })
+
+      // Add amenities as JSON
+      submitData.append('amenities', JSON.stringify(amenities))
 
       // Add existing image URL if no new image selected
       if (!selectedImage && project?.images?.[0]) {
@@ -526,6 +545,48 @@ export default function EditProjectPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Amenities */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Project Amenities</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add an amenity (e.g., Swimming Pool, Gym, etc.)"
+                      value={newAmenity}
+                      onChange={(e) => setNewAmenity(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAmenity())}
+                    />
+                    <Button type="button" onClick={addAmenity}>
+                      Add
+                    </Button>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {amenities.map((amenity) => (
+                      <Badge
+                        key={amenity}
+                        variant="secondary"
+                        className="flex items-center gap-1 px-3 py-1"
+                      >
+                        {amenity}
+                        <X
+                          className="w-3 h-3 cursor-pointer hover:text-red-500"
+                          onClick={() => removeAmenity(amenity)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+                  
+                  {amenities.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No amenities added yet. Add some amenities to make your project more attractive.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
