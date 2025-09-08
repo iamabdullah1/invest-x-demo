@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { DatabaseService } from '@/lib/database';
+import { InvestorVerification } from '@/models';
 
 export async function POST(request: NextRequest) {
   try {
+    await DatabaseService.connect();
+
     const formData = await request.formData();
     
     // Extract form fields
@@ -33,6 +36,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if verification request already exists for this email
+    const existingVerification = await InvestorVerification.findOne({ email: email.toLowerCase() });
+    if (existingVerification) {
+      return NextResponse.json(
+        { error: 'A verification request already exists for this email' },
+        { status: 409 }
+      );
+    }
+
     // Validate file types
     if (!frontIdCard.type.startsWith('image/') || !backIdCard.type.startsWith('image/')) {
       return NextResponse.json(
@@ -50,57 +62,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique verification ID
-    const verificationId = uuidv4();
-    
     // Create upload directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'uploads', 'verifications', verificationId);
+    const uploadDir = join(process.cwd(), 'public', 'uploads', 'verifications');
     await mkdir(uploadDir, { recursive: true });
+
+    // Generate unique filenames
+    const timestamp = Date.now();
+    const frontFileName = `${timestamp}_${email.replace('@', '_')}_front.${frontIdCard.name.split('.').pop()}`;
+    const backFileName = `${timestamp}_${email.replace('@', '_')}_back.${backIdCard.name.split('.').pop()}`;
 
     // Save files
     const frontIdBytes = await frontIdCard.arrayBuffer();
     const backIdBytes = await backIdCard.arrayBuffer();
     
-    const frontIdExtension = frontIdCard.name.split('.').pop();
-    const backIdExtension = backIdCard.name.split('.').pop();
-    
-    const frontIdPath = join(uploadDir, `front-id.${frontIdExtension}`);
-    const backIdPath = join(uploadDir, `back-id.${backIdExtension}`);
+    const frontIdPath = join(uploadDir, frontFileName);
+    const backIdPath = join(uploadDir, backFileName);
     
     await writeFile(frontIdPath, Buffer.from(frontIdBytes));
     await writeFile(backIdPath, Buffer.from(backIdBytes));
 
-    // Here you would typically:
-    // 1. Save the verification data to your database
-    // 2. Send notification emails to admin
-    // 3. Create a verification record with pending status
-    
-    // For now, we'll simulate the database save
-    const verificationData = {
-      verificationId,
-      firstName,
-      lastName,
-      email,
-      phone,
-      address,
-      city,
-      postalCode,
-      frontIdPath: `uploads/verifications/${verificationId}/front-id.${frontIdExtension}`,
-      backIdPath: `uploads/verifications/${verificationId}/back-id.${backIdExtension}`,
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
-    };
+    // Create verification request in database
+    const verification = new InvestorVerification({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      postalCode: postalCode.trim(),
+      frontIdCardPath: `/uploads/verifications/${frontFileName}`,
+      backIdCardPath: `/uploads/verifications/${backFileName}`,
+      status: 'pending'
+    });
 
-    console.log('Investor verification submitted:', verificationData);
+    await verification.save();
 
-    // In a real application, you would save this to your database
-    // await saveVerificationToDatabase(verificationData);
+    console.log(`📋 New investor verification request submitted by ${email}`);
 
-    // Send success response
     return NextResponse.json({
       success: true,
       message: 'Verification request submitted successfully',
-      verificationId,
+      verificationId: verification._id,
       status: 'pending'
     });
 
@@ -108,6 +110,50 @@ export async function POST(request: NextRequest) {
     console.error('Investor verification error:', error);
     return NextResponse.json(
       { error: 'Failed to process verification request' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    await DatabaseService.connect();
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query: any = {};
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Get verification requests
+    const verifications = await InvestorVerification.find(query)
+      .sort({ submittedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await InvestorVerification.countDocuments(query);
+
+    return NextResponse.json({
+      success: true,
+      verifications,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Error fetching verification requests:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch verification requests' },
       { status: 500 }
     );
   }

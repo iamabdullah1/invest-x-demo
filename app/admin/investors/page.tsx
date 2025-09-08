@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -5,271 +8,430 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Search, Mail, Phone, MapPin, TrendingUp, MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { formatCurrency } from "@/lib/mockData"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { 
+  Users, Search, Mail, Phone, MapPin, Calendar, 
+  Eye, Check, X, FileText, Image, Clock 
+} from "lucide-react"
 
-// Mock investor data
-const mockInvestors = [
-  {
-    id: "inv-1",
-    name: "Ahmed Khan",
-    email: "ahmed@example.com",
-    phone: "+92 300 1234567",
-    city: "Karachi",
-    joinDate: "2024-01-15",
-    totalInvested: 7000000,
-    activeInvestments: 3,
-    status: "active",
-    riskProfile: "moderate",
-    avatar: "/professional-pakistani-man.png",
-  },
-  {
-    id: "inv-2",
-    name: "Fatima Ali",
-    email: "fatima@example.com",
-    phone: "+92 321 9876543",
-    city: "Lahore",
-    joinDate: "2024-02-20",
-    totalInvested: 12000000,
-    activeInvestments: 5,
-    status: "active",
-    riskProfile: "aggressive",
-    avatar: "/professional-pakistani-woman.png",
-  },
-  {
-    id: "inv-3",
-    name: "Hassan Sheikh",
-    email: "hassan@example.com",
-    phone: "+92 333 5555555",
-    city: "Islamabad",
-    joinDate: "2024-03-10",
-    totalInvested: 3500000,
-    activeInvestments: 2,
-    status: "pending",
-    riskProfile: "conservative",
-  },
-  {
-    id: "inv-4",
-    name: "Ayesha Malik",
-    email: "ayesha@example.com",
-    phone: "+92 345 7777777",
-    city: "Rawalpindi",
-    joinDate: "2024-04-05",
-    totalInvested: 8500000,
-    activeInvestments: 4,
-    status: "active",
-    riskProfile: "moderate",
-  },
-]
+interface VerificationRequest {
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+  frontIdCardPath?: string  // Made optional as it might be stored differently
+  backIdCardPath?: string   // Made optional as it might be stored differently
+  frontIdCard?: string      // For base64 or other storage format
+  backIdCard?: string       // For base64 or other storage format
+  status: 'pending' | 'approved' | 'rejected'
+  submittedAt: string
+  reviewedAt?: string
+  reviewedBy?: string
+  rejectionReason?: string
+  notes?: string
+  createdAt?: string        // Additional field your colleague might use
+  updatedAt?: string        // Additional field your colleague might use
+}
 
 export default function AdminInvestorsPage() {
-  const totalInvestors = mockInvestors.length
-  const activeInvestors = mockInvestors.filter((inv) => inv.status === "active").length
-  const pendingInvestors = mockInvestors.filter((inv) => inv.status === "pending").length
-  const totalInvested = mockInvestors.reduce((sum, inv) => sum + inv.totalInvested, 0)
+  const [verifications, setVerifications] = useState<VerificationRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedVerification, setSelectedVerification] = useState<VerificationRequest | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState('')
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
+  // Fetch verification requests
+  useEffect(() => {
+    fetchVerifications()
+  }, [statusFilter])
+
+  const fetchVerifications = async () => {
+    try {
+      setLoading(true)
+      // Fetch from investor_verifications collection
+      const response = await fetch(`/api/admin/investor-verifications?status=${statusFilter}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        setVerifications(data.verifications || [])
+      } else {
+        setError('Failed to fetch verification requests')
+      }
+    } catch (error) {
+      setError('Error fetching verification requests')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerificationAction = async (id: string, action: 'approve' | 'reject') => {
+    try {
+      setIsProcessing(true)
+      setError('')
+
+      const response = await fetch(`/api/admin/investor-verifications/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          action,
+          rejectionReason: action === 'reject' ? rejectionReason : undefined,
+          notes: notes || undefined
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Update the verification in the list
+        setVerifications(prev => 
+          prev.map(v => 
+            v._id === id 
+              ? { ...v, status: action === 'approve' ? 'approved' : 'rejected' }
+              : v
+          )
+        )
+        setSelectedVerification(null)
+        setRejectionReason('')
+        setNotes('')
+        // Refresh the list to get updated data
+        fetchVerifications()
+      } else {
+        setError(data.error || 'Failed to process verification')
+      }
+    } catch (error) {
+      setError('Error processing verification')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Filter verifications based on search and status
+  const filteredVerifications = verifications.filter(verification => {
+    const matchesSearch = searchTerm === '' || 
+      verification.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      verification.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      verification.email.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'all' || verification.status === statusFilter
+    
+    return matchesSearch && matchesStatus
+  })
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600">Pending</Badge>
+      case 'approved':
+        return <Badge variant="default" className="bg-green-600">Approved</Badge>
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
   }
 
   return (
     <RoleGuard requiredRole="admin">
-      <div className="space-y-8">
+      <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Investor Management</h1>
-          <p className="text-muted-foreground">Manage and oversee all platform investors</p>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Investors</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalInvestors}</div>
-              <p className="text-xs text-muted-foreground">Registered users</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Investors</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activeInvestors}</div>
-              <p className="text-xs text-green-600">Currently investing</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pendingInvestors}</div>
-              <p className="text-xs text-yellow-600">Awaiting verification</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
-              <p className="text-xs text-muted-foreground">Platform total</p>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Investor Verifications</h1>
+            <p className="text-muted-foreground">Manage investor verification requests</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="text-lg px-3 py-1">
+              <Users className="h-4 w-4 mr-1" />
+              {verifications.length} Total
+            </Badge>
+          </div>
         </div>
 
         {/* Filters */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filter Investors</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search investors..." className="pl-10" />
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
               </div>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="City" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Cities</SelectItem>
-                  <SelectItem value="karachi">Karachi</SelectItem>
-                  <SelectItem value="lahore">Lahore</SelectItem>
-                  <SelectItem value="islamabad">Islamabad</SelectItem>
-                  <SelectItem value="rawalpindi">Rawalpindi</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Risk Profile" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Profiles</SelectItem>
-                  <SelectItem value="conservative">Conservative</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="aggressive">Aggressive</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Investors List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Investors</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {mockInvestors.map((investor) => (
-                <div key={investor.id} className="border rounded-lg p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4">
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Verifications List */}
+        <div className="grid gap-4">
+          {loading ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-2 text-muted-foreground">Loading verifications...</p>
+              </CardContent>
+            </Card>
+          ) : filteredVerifications.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No verification requests found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your filters'
+                    : 'No verification requests have been submitted yet'
+                  }
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            filteredVerifications.map((verification) => (
+              <Card key={verification._id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={investor.avatar || "/placeholder.svg"} alt={investor.name} />
-                        <AvatarFallback>{getInitials(investor.name)}</AvatarFallback>
+                        <AvatarFallback>
+                          {verification.firstName[0]}{verification.lastName[0]}
+                        </AvatarFallback>
                       </Avatar>
-                      <div className="space-y-2">
-                        <div>
-                          <h3 className="text-lg font-semibold">{investor.name}</h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center">
-                              <Mail className="h-4 w-4 mr-1" />
-                              {investor.email}
-                            </div>
-                            <div className="flex items-center">
-                              <Phone className="h-4 w-4 mr-1" />
-                              {investor.phone}
-                            </div>
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-1" />
-                              {investor.city}
-                            </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {verification.firstName} {verification.lastName}
+                        </h3>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <div className="flex items-center">
+                            <Mail className="h-4 w-4 mr-1" />
+                            {verification.email}
+                          </div>
+                          <div className="flex items-center">
+                            <Phone className="h-4 w-4 mr-1" />
+                            {verification.phone}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {verification.city}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              investor.status === "active"
-                                ? "default"
-                                : investor.status === "pending"
-                                  ? "secondary"
-                                  : "destructive"
-                            }
-                          >
-                            {investor.status}
-                          </Badge>
-                          <Badge variant="outline">{investor.riskProfile}</Badge>
+                        <div className="flex items-center space-x-2 mt-2">
+                          {getStatusBadge(verification.status)}
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Submitted {new Date(verification.submittedAt).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Profile</DropdownMenuItem>
-                        <DropdownMenuItem>Send Message</DropdownMenuItem>
-                        <DropdownMenuItem>View Investments</DropdownMenuItem>
-                        {investor.status === "pending" && <DropdownMenuItem>Approve Account</DropdownMenuItem>}
-                        <DropdownMenuItem className="text-red-600">Suspend Account</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                    <div className="flex items-center space-x-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedVerification(verification)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Details
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>
+                              Verification Request - {verification.firstName} {verification.lastName}
+                            </DialogTitle>
+                            <DialogDescription>
+                              Review the verification details and ID documents
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          {selectedVerification && (
+                            <div className="space-y-6">
+                              {/* Personal Information */}
+                              <div>
+                                <h4 className="font-semibold mb-3">Personal Information</h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="font-medium">Name:</span> {selectedVerification.firstName} {selectedVerification.lastName}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Email:</span> {selectedVerification.email}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Phone:</span> {selectedVerification.phone}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">City:</span> {selectedVerification.city}
+                                  </div>
+                                  <div className="col-span-2">
+                                    <span className="font-medium">Address:</span> {selectedVerification.address}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Postal Code:</span> {selectedVerification.postalCode}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Status:</span> {getStatusBadge(selectedVerification.status)}
+                                  </div>
+                                </div>
+                              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4 pt-4 border-t">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total Invested</div>
-                      <div className="font-semibold">{formatCurrency(investor.totalInvested)}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Active Investments</div>
-                      <div className="font-semibold">{investor.activeInvestments}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Join Date</div>
-                      <div className="font-semibold">{new Date(investor.joinDate).toLocaleDateString()}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Risk Profile</div>
-                      <div className="font-semibold capitalize">{investor.riskProfile}</div>
+                              {/* ID Card Images */}
+                              <div>
+                                <h4 className="font-semibold mb-3">ID Card Documents</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-sm font-medium mb-2">Front ID Card</p>
+                                    {(selectedVerification.frontIdCardPath || selectedVerification.frontIdCard) ? (
+                                      <img
+                                        src={selectedVerification.frontIdCardPath || selectedVerification.frontIdCard || ''}
+                                        alt="Front ID Card"
+                                        className="w-full h-48 object-cover border rounded-lg"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          target.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div className="hidden w-full h-48 border rounded-lg flex items-center justify-center bg-gray-100">
+                                      <p className="text-gray-500">Front ID image not available</p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium mb-2">Back ID Card</p>
+                                    {(selectedVerification.backIdCardPath || selectedVerification.backIdCard) ? (
+                                      <img
+                                        src={selectedVerification.backIdCardPath || selectedVerification.backIdCard || ''}
+                                        alt="Back ID Card"
+                                        className="w-full h-48 object-cover border rounded-lg"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          target.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div className="hidden w-full h-48 border rounded-lg flex items-center justify-center bg-gray-100">
+                                      <p className="text-gray-500">Back ID image not available</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Notes Section */}
+                              <div>
+                                <Label htmlFor="notes">Admin Notes (Optional)</Label>
+                                <Textarea
+                                  id="notes"
+                                  placeholder="Add any notes about this verification..."
+                                  value={notes}
+                                  onChange={(e) => setNotes(e.target.value)}
+                                  className="mt-1"
+                                />
+                              </div>
+
+                              {/* Rejection Reason */}
+                              <div>
+                                <Label htmlFor="rejectionReason">Rejection Reason (Required for rejection)</Label>
+                                <Textarea
+                                  id="rejectionReason"
+                                  placeholder="Enter reason for rejection..."
+                                  value={rejectionReason}
+                                  onChange={(e) => setRejectionReason(e.target.value)}
+                                  className="mt-1"
+                                />
+                              </div>
+
+                              {/* Action Buttons */}
+                              {selectedVerification.status === 'pending' && (
+                                <div className="flex space-x-3 pt-4">
+                                  <Button
+                                    onClick={() => handleVerificationAction(selectedVerification._id, 'approve')}
+                                    disabled={isProcessing}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <Check className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleVerificationAction(selectedVerification._id, 'reject')}
+                                    disabled={isProcessing || !rejectionReason.trim()}
+                                    variant="destructive"
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Review Information */}
+                              {selectedVerification.reviewedAt && (
+                                <div className="bg-muted p-4 rounded-lg">
+                                  <h5 className="font-medium mb-2">Review Information</h5>
+                                  <div className="text-sm space-y-1">
+                                    <div>Reviewed by: {selectedVerification.reviewedBy}</div>
+                                    <div>Reviewed at: {new Date(selectedVerification.reviewedAt).toLocaleString()}</div>
+                                    {selectedVerification.rejectionReason && (
+                                      <div>Rejection reason: {selectedVerification.rejectionReason}</div>
+                                    )}
+                                    {selectedVerification.notes && (
+                                      <div>Notes: {selectedVerification.notes}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
     </RoleGuard>
   )
