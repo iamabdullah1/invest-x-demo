@@ -26,10 +26,14 @@ interface VerificationRequest {
   address: string
   city: string
   postalCode: string
-  frontIdCardPath?: string  // Made optional as it might be stored differently
-  backIdCardPath?: string   // Made optional as it might be stored differently
-  frontIdCard?: string      // For base64 or other storage format
-  backIdCard?: string       // For base64 or other storage format
+  frontIdCardPath?: string  // Legacy support
+  backIdCardPath?: string   // Legacy support
+  frontIdCard?: string      // Legacy support
+  backIdCard?: string       // Legacy support
+  frontIdUrl?: string       // Cloudinary URL for front ID
+  backIdUrl?: string        // Cloudinary URL for back ID
+  frontIdPublicId?: string  // Cloudinary public ID for front ID
+  backIdPublicId?: string   // Cloudinary public ID for back ID
   status: 'pending' | 'approved' | 'rejected'
   submittedAt: string
   reviewedAt?: string
@@ -322,9 +326,9 @@ export default function AdminInvestorsPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div>
                                     <p className="text-sm font-medium mb-2">Front ID Card</p>
-                                    {(selectedVerification.frontIdCardPath || selectedVerification.frontIdCard) ? (
+                                    {(selectedVerification.frontIdUrl || selectedVerification.frontIdCardPath || selectedVerification.frontIdCard) ? (
                                       <img
-                                        src={selectedVerification.frontIdCardPath || selectedVerification.frontIdCard || ''}
+                                        src={selectedVerification.frontIdUrl || selectedVerification.frontIdCardPath || selectedVerification.frontIdCard || ''}
                                         alt="Front ID Card"
                                         className="w-full h-48 object-cover border rounded-lg"
                                         onError={(e) => {
@@ -340,9 +344,9 @@ export default function AdminInvestorsPage() {
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium mb-2">Back ID Card</p>
-                                    {(selectedVerification.backIdCardPath || selectedVerification.backIdCard) ? (
+                                    {(selectedVerification.backIdUrl || selectedVerification.backIdCardPath || selectedVerification.backIdCard) ? (
                                       <img
-                                        src={selectedVerification.backIdCardPath || selectedVerification.backIdCard || ''}
+                                        src={selectedVerification.backIdUrl || selectedVerification.backIdCardPath || selectedVerification.backIdCard || ''}
                                         alt="Back ID Card"
                                         className="w-full h-48 object-cover border rounded-lg"
                                         onError={(e) => {
