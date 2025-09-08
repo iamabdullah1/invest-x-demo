@@ -5,8 +5,6 @@ import { getCollection } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    await DatabaseService.connect();
-
     const formData = await request.formData();
     
     // Extract form fields
@@ -36,7 +34,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if verification request already exists for this email
-    const existingVerification = await InvestorVerification.findOne({ email: email.toLowerCase() });
+    const verificationCollection = await getCollection('investor_verifications');
+    const existingVerification = await verificationCollection.findOne({ email: email.toLowerCase() });
     if (existingVerification) {
       return NextResponse.json(
         { error: 'A verification request already exists for this email' },
@@ -150,8 +149,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    await DatabaseService.connect();
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
@@ -165,12 +162,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get verification requests
-    const verifications = await InvestorVerification.find(query)
+    const verificationCollection = await getCollection('investor_verifications');
+    const verifications = await verificationCollection
+      .find(query)
       .sort({ submittedAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .toArray();
 
-    const total = await InvestorVerification.countDocuments(query);
+    const total = await verificationCollection.countDocuments(query);
 
     return NextResponse.json({
       success: true,

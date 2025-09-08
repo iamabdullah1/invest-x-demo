@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseService } from '@/lib/database';
+import { getCollection } from '@/lib/db';
 import JWTAuthService from '@/lib/jwtAuth';
 import { ObjectId } from 'mongodb';
 
@@ -31,11 +31,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    await DatabaseService.connect();
-
-    // Use your colleague's collection structure
-    const db = await DatabaseService.connect();
-    const collection = db.collection('investor_verifications');
+    // Get the investor_verifications collection
+    const collection = await getCollection('investor_verifications');
 
     // Find the verification request
     const verification = await collection.findOne({ _id: new ObjectId(id) });

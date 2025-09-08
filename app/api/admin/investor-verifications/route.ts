@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DatabaseService } from '@/lib/database';
+import { getCollection } from '@/lib/db';
 import JWTAuthService from '@/lib/jwtAuth';
 
 export async function GET(request: NextRequest) {
@@ -13,8 +13,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await DatabaseService.connect();
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
@@ -27,10 +25,8 @@ export async function GET(request: NextRequest) {
       query.status = status;
     }
 
-    // Use your colleague's collection structure
-    // This will be replaced with the actual implementation once your colleague pushes the code
-    const db = await DatabaseService.connect();
-    const collection = db.collection('investor_verifications');
+    // Get the investor_verifications collection
+    const collection = await getCollection('investor_verifications');
     
     const verifications = await collection
       .find(query)
