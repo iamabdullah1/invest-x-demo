@@ -40,6 +40,12 @@ const navItems: NavItem[] = [
     roles: ["investor", "admin"],
   },
   {
+    title: "Guest Dashboard",
+    href: "/guest-dashboard",
+    icon: Home,
+    roles: ["guest"],
+  },
+  {
     title: "Projects",
     href: "/projects",
     icon: Building2,

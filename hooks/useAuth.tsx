@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (data.user.role === 'investor') {
           window.location.href = '/dashboard';
         } else if (data.user.role === 'guest') {
-          window.location.href = '/projects';
+          window.location.href = '/guest-dashboard';
         }
         return { success: true };
       } else {
