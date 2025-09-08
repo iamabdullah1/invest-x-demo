@@ -13,6 +13,7 @@ import { useState, useEffect } from "react"
 export default function GuestDashboardPage() {
   const { user, refreshUser } = useAuth()
   const [verificationStatus, setVerificationStatus] = useState<string>('none')
+  const [verificationData, setVerificationData] = useState<any>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Get top 3 projects for preview
@@ -29,6 +30,7 @@ export default function GuestDashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setVerificationStatus(data.user.verificationStatus || 'none')
+        setVerificationData(data.user.verificationData || null)
         
         // If status is approved, refresh the user context to update role
         if (data.user.verificationStatus === 'approved' && user?.role === 'guest') {
@@ -130,6 +132,11 @@ export default function GuestDashboardPage() {
                     <CardDescription className="text-red-700">
                       Your verification request needs to be updated. Please submit a new request.
                     </CardDescription>
+                    {verificationData?.rejectionReason && (
+                      <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+                        <strong>Reason:</strong> {verificationData.rejectionReason}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Button asChild className="bg-red-600 hover:bg-red-700">
