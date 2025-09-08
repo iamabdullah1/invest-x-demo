@@ -21,6 +21,7 @@ import {
   Heart,
   Sparkles,
   GitCompare,
+  FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type UserRole, getRole } from "@/lib/mockAuth"
@@ -133,6 +134,12 @@ const adminItems: NavItem[] = [
     title: "Investors",
     href: "/admin/investors",
     icon: Users,
+    roles: ["admin"],
+  },
+  {
+    title: "Verification Requests",
+    href: "/admin/verification-requests",
+    icon: FileText,
     roles: ["admin"],
   },
   {
