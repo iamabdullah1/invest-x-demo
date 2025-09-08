@@ -51,11 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file sizes (500KB limit for ID cards)
-    const maxSize = 500 * 1024; // 500KB
+    // Validate file sizes (5MB limit for ID cards)
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (frontIdCard.size > maxSize || backIdCard.size > maxSize) {
       return NextResponse.json(
-        { error: 'ID card file size must be less than 500KB' },
+        { error: 'ID card file size must be less than 5MB' },
         { status: 400 }
       );
     }
