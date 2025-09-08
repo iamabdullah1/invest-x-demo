@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
   Users, Search, Mail, Phone, MapPin, Calendar, 
-  Eye, Check, X, FileText, Image, Clock 
+  Eye, Check, X, FileText, Image, Clock, Trash2
 } from "lucide-react"
 
 interface VerificationRequest {
@@ -54,6 +54,7 @@ export default function AdminInvestorsPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // Fetch verification requests
   useEffect(() => {
@@ -124,6 +125,36 @@ export default function AdminInvestorsPage() {
       }
     } catch (error) {
       setError('Error processing verification')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleDeleteVerification = async (id: string) => {
+    try {
+      setIsProcessing(true)
+      setError('')
+
+      const response = await fetch(`/api/admin/investor-verifications/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Remove the verification from the list
+        setVerifications(prev => prev.filter(v => v._id !== id))
+        setDeleteConfirmId(null)
+        setSelectedVerification(null)
+      } else {
+        setError(data.error || 'Failed to delete verification')
+      }
+    } catch (error) {
+      setError('Error deleting verification')
     } finally {
       setIsProcessing(false)
     }
@@ -280,6 +311,33 @@ export default function AdminInvestorsPage() {
                             View Details
                           </Button>
                         </DialogTrigger>
+                        
+                        {/* Delete Button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={`text-red-600 border-red-200 hover:bg-red-50 ${
+                            verification.verificationStatus === 'approved' 
+                              ? 'opacity-50 cursor-not-allowed' 
+                              : ''
+                          }`}
+                          onClick={() => {
+                            if (verification.verificationStatus === 'approved') {
+                              setError('Cannot delete approved verification requests. Approved investors cannot have their verification status revoked.')
+                              return
+                            }
+                            setDeleteConfirmId(verification._id)
+                          }}
+                          disabled={verification.verificationStatus === 'approved'}
+                          title={
+                            verification.verificationStatus === 'approved' 
+                              ? 'Cannot delete approved verifications' 
+                              : 'Delete verification request'
+                          }
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
                         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>
@@ -337,10 +395,11 @@ export default function AdminInvestorsPage() {
                                           target.nextElementSibling?.classList.remove('hidden');
                                         }}
                                       />
-                                    ) : null}
-                                    <div className="hidden w-full h-48 border rounded-lg flex items-center justify-center bg-gray-100">
-                                      <p className="text-gray-500">Front ID image not available</p>
-                                    </div>
+                                    ) : (
+                                      <div className="w-full h-48 border rounded-lg flex items-center justify-center bg-gray-100">
+                                        <p className="text-gray-500">Front ID image not available</p>
+                                      </div>
+                                    )}
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium mb-2">Back ID Card</p>
@@ -356,7 +415,7 @@ export default function AdminInvestorsPage() {
                                         }}
                                       />
                                     ) : null}
-                                    <div className="hidden w-full h-48 border rounded-lg flex items-center justify-center bg-gray-100">
+                                    <div className="w-full h-48 border rounded-lg flex items-center justify-center bg-gray-100" style={{display: 'none'}}>
                                       <p className="text-gray-500">Back ID image not available</p>
                                     </div>
                                   </div>
@@ -377,10 +436,10 @@ export default function AdminInvestorsPage() {
 
                               {/* Rejection Reason */}
                               <div>
-                                <Label htmlFor="rejectionReason">Rejection Reason (Required for rejection)</Label>
+                                <Label htmlFor="rejectionReason">Rejection Reason (Optional)</Label>
                                 <Textarea
                                   id="rejectionReason"
-                                  placeholder="Enter reason for rejection..."
+                                  placeholder="Enter reason for rejection (optional)..."
                                   value={rejectionReason}
                                   onChange={(e) => setRejectionReason(e.target.value)}
                                   className="mt-1"
@@ -400,7 +459,7 @@ export default function AdminInvestorsPage() {
                                   </Button>
                                   <Button
                                     onClick={() => handleVerificationAction(selectedVerification._id, 'reject')}
-                                    disabled={isProcessing || !rejectionReason.trim()}
+                                    disabled={isProcessing}
                                     variant="destructive"
                                   >
                                     <X className="h-4 w-4 mr-1" />
@@ -437,6 +496,37 @@ export default function AdminInvestorsPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmId && (
+        <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this verification request? This action will reset the user's verification status to "none" and cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteVerification(deleteConfirmId)}
+                disabled={isProcessing}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {isProcessing ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </RoleGuard>
   )
 }
