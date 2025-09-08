@@ -1,16 +1,57 @@
+"use client"
+
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Building2, UserCheck, Star, ArrowRight, Eye } from "lucide-react"
+import { TrendingUp, Building2, UserCheck, Star, ArrowRight, Eye, RefreshCw, Clock, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { mockProjects, formatCurrency } from "@/lib/mockData"
+import { useAuth } from "@/hooks/useAuth"
+import { useState, useEffect } from "react"
 
 export default function GuestDashboardPage() {
+  const { user, refreshUser } = useAuth()
+  const [verificationStatus, setVerificationStatus] = useState<string>('none')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
   // Get top 3 projects for preview
   const featuredProjects = mockProjects
     .sort((a, b) => b.expectedReturn - a.expectedReturn)
     .slice(0, 3)
+
+  // Check verification status
+  const checkVerificationStatus = async () => {
+    try {
+      const response = await fetch('/api/auth/verification-status', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setVerificationStatus(data.user.verificationStatus || 'none')
+        
+        // If status is approved, refresh the user context to update role
+        if (data.user.verificationStatus === 'approved' && user?.role === 'guest') {
+          await refreshUser()
+        }
+      }
+    } catch (error) {
+      console.error('Error checking verification status:', error)
+    }
+  }
+
+  // Auto-refresh verification status every 30 seconds
+  useEffect(() => {
+    checkVerificationStatus()
+    const interval = setInterval(checkVerificationStatus, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await Promise.all([checkVerificationStatus(), refreshUser()])
+    setIsRefreshing(false)
+  }
 
   return (
     <RoleGuard requiredRole="guest">
@@ -21,24 +62,106 @@ export default function GuestDashboardPage() {
           <p className="text-muted-foreground">Explore premium real estate investment opportunities</p>
         </div>
 
-        {/* Become Investor CTA */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <CardTitle className="text-xl text-blue-900">Ready to Start Investing?</CardTitle>
-                <CardDescription className="text-blue-700">
-                  Upgrade to investor status and unlock exclusive investment opportunities
-                </CardDescription>
+        {/* Verification Status Card */}
+        {verificationStatus === 'pending' && (
+          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Clock className="h-6 w-6 text-yellow-600" />
+                  <div>
+                    <CardTitle className="text-lg text-yellow-900">Verification Under Review</CardTitle>
+                    <CardDescription className="text-yellow-700">
+                      Your investor verification is being processed. We'll notify you once approved.
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Checking...' : 'Check Status'}
+                </Button>
               </div>
-              <Button asChild className="bg-blue-600 hover:bg-blue-700">
-                <Link href="/auth/investor-verification">
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Become an Investor
-                </Link>
-              </Button>
-            </div>
-          </CardHeader>
+            </CardHeader>
+          </Card>
+        )}
+
+        {verificationStatus === 'approved' && (
+          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                  <div>
+                    <CardTitle className="text-lg text-green-900">Verification Approved!</CardTitle>
+                    <CardDescription className="text-green-700">
+                      Congratulations! Your investor status has been approved. Redirecting to investor dashboard...
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="border-green-300 text-green-700 hover:bg-green-100"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+        )}
+
+        {verificationStatus === 'rejected' && (
+          <Card className="bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <UserCheck className="h-6 w-6 text-red-600" />
+                  <div>
+                    <CardTitle className="text-lg text-red-900">Verification Needs Attention</CardTitle>
+                    <CardDescription className="text-red-700">
+                      Your verification request needs to be updated. Please submit a new request.
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button asChild className="bg-red-600 hover:bg-red-700">
+                  <Link href="/auth/investor-verification">
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Submit New Request
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+        )}
+
+        {/* Become Investor CTA - Only show if no verification submitted */}
+        {verificationStatus === 'none' && (
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <CardTitle className="text-xl text-blue-900">Ready to Start Investing?</CardTitle>
+                  <CardDescription className="text-blue-700">
+                    Upgrade to investor status and unlock exclusive investment opportunities
+                  </CardDescription>
+                </div>
+                <Button asChild className="bg-blue-600 hover:bg-blue-700">
+                  <Link href="/auth/investor-verification">
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Become an Investor
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center space-x-3">
@@ -71,6 +194,7 @@ export default function GuestDashboardPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Featured Projects Preview */}
         <Card>

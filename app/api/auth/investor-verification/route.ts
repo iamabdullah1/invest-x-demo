@@ -2,15 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import CloudinaryService from '@/lib/cloudinary';
 import { getCollection } from '@/lib/db';
+import JWTAuthService from '@/lib/jwtAuth';
+import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const user = await JWTAuthService.getAuthenticatedUser(request);
+    
+    if (!user) {
+      console.log('❌ Authentication failed - no user found');
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const formData = await request.formData();
     
-    // Extract form fields
+    // Extract form fields (no email needed since we have the user)
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
-    const email = formData.get('email') as string;
     const phone = formData.get('phone') as string;
     const address = formData.get('address') as string;
     const city = formData.get('city') as string;
@@ -19,7 +31,7 @@ export async function POST(request: NextRequest) {
     const backIdCard = formData.get('backIdCard') as File;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !phone || !address || !city || !postalCode) {
+    if (!firstName || !lastName || !phone || !address || !city || !postalCode) {
       return NextResponse.json(
         { error: 'All personal and address information is required' },
         { status: 400 }
@@ -33,14 +45,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if verification request already exists for this email
-    const verificationCollection = await getCollection('investor_verifications');
-    const existingVerification = await verificationCollection.findOne({ email: email.toLowerCase() });
-    if (existingVerification) {
-      return NextResponse.json(
-        { error: 'A verification request already exists for this email' },
-        { status: 409 }
-      );
+    // Check if user already has a pending or approved verification
+    const usersCollection = await getCollection('users');
+    const existingUser = await usersCollection.findOne({ 
+      _id: new ObjectId(user._id),
+      verificationStatus: { $in: ['pending', 'approved'] }
+    });
+    
+    if (existingUser) {
+      const status = existingUser.verificationStatus;
+      if (status === 'approved') {
+        return NextResponse.json(
+          { error: 'Your verification is already approved' },
+          { status: 409 }
+        );
+      } else if (status === 'pending') {
+        return NextResponse.json(
+          { error: 'A verification request is already pending review' },
+          { status: 409 }
+        );
+      }
     }
 
     // Validate file types
@@ -89,39 +113,54 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Cloudinary upload successful for verification: ${verificationId}`);
 
-    // Prepare verification data for database
+    // Update user with verification data
     const verificationData = {
       verificationId,
-      firstName,
-      lastName,
-      email,
-      phone,
       address,
-      city,
       postalCode,
       frontIdUrl: uploadResult.frontId?.url,
       frontIdPublicId: uploadResult.frontId?.public_id,
       backIdUrl: uploadResult.backId?.url,
       backIdPublicId: uploadResult.backId?.public_id,
-      status: 'pending',
       submittedAt: new Date(),
-      cloudinaryUpload: true,
     };
 
-    // Save to MongoDB
+    // Update user record
     try {
-      const verificationCollection = await getCollection('investor_verifications');
-      const insertResult = await verificationCollection.insertOne(verificationData);
+      const updateResult = await usersCollection.updateOne(
+        { _id: new ObjectId(user._id) },
+        { 
+          $set: {
+            firstName,
+            lastName,
+            phone,
+            city,
+            verificationStatus: 'pending',
+            verificationData
+          }
+        }
+      );
       
-      console.log(`💾 Verification saved to MongoDB with ID: ${insertResult.insertedId}`);
+      if (updateResult.matchedCount === 0) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      
+      console.log(`💾 User verification data updated for user: ${user._id}`);
     } catch (dbError: any) {
-      console.error('❌ Database save error:', dbError);
-      // Continue anyway - Cloudinary upload was successful
+      console.error('❌ Database update error:', dbError);
+      return NextResponse.json(
+        { error: 'Failed to update user verification data' },
+        { status: 500 }
+      );
     }
 
     console.log('✅ Investor verification submitted successfully:', {
       verificationId,
-      email,
+      userId: user._id,
+      email: user.email,
       frontIdUrl: uploadResult.frontId?.url,
       backIdUrl: uploadResult.backId?.url,
     });
@@ -149,28 +188,60 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const { user, error } = await JWTAuthService.requireRole(request, 'admin');
+    if (error || !user) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
 
-    // Build query
+    // Build query - fetch users with verification requests
     const query: any = {};
     if (status && status !== 'all') {
-      query.status = status;
+      query.verificationStatus = status;
+    } else {
+      // If no specific status, show all users who have submitted verification (not 'none')
+      query.verificationStatus = { $ne: 'none' };
     }
 
-    // Get verification requests
-    const verificationCollection = await getCollection('investor_verifications');
-    const verifications = await verificationCollection
+    // Get users with verification requests
+    const usersCollection = await getCollection('users');
+    const users = await usersCollection
       .find(query)
-      .sort({ submittedAt: -1 })
+      .sort({ 'verificationData.submittedAt': -1 })
       .skip(skip)
       .limit(limit)
       .toArray();
 
-    const total = await verificationCollection.countDocuments(query);
+    const total = await usersCollection.countDocuments(query);
+
+    // Transform data to match expected format
+    const verifications = users.map(user => ({
+      _id: user._id,
+      verificationId: user.verificationData?.verificationId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      address: user.verificationData?.address,
+      city: user.city,
+      postalCode: user.verificationData?.postalCode,
+      frontIdUrl: user.verificationData?.frontIdUrl,
+      backIdUrl: user.verificationData?.backIdUrl,
+      status: user.verificationStatus,
+      submittedAt: user.verificationData?.submittedAt,
+      reviewedAt: user.verificationData?.reviewedAt,
+      reviewedBy: user.verificationData?.reviewedBy,
+      rejectionReason: user.verificationData?.rejectionReason,
+    }));
 
     return NextResponse.json({
       success: true,

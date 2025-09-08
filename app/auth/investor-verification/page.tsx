@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,12 +10,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Upload, CheckCircle, User, MapPin, Camera } from "lucide-react"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function InvestorVerificationPage() {
+  const { user, isAuthenticated, loading } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
     phone: "",
     address: "",
     city: "",
@@ -29,6 +30,50 @@ export default function InvestorVerificationPage() {
   const [frontIdPreview, setFrontIdPreview] = useState<string | null>(null)
   const [backIdPreview, setBackIdPreview] = useState<string | null>(null)
   const router = useRouter()
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/auth/login');
+    }
+  }, [loading, isAuthenticated, router]);
+
+  // Pre-fill form with user data
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        city: user.city || "",
+      }));
+
+      // Check if user already has verification data
+      if (user.verificationStatus && user.verificationStatus !== 'none') {
+        // User already has verification status
+        if (user.verificationStatus === 'pending') {
+          setError('You already have a verification request pending review.');
+        } else if (user.verificationStatus === 'approved') {
+          setError('Your verification is already approved. You are now an investor!');
+        } else if (user.verificationStatus === 'rejected') {
+          setError('Your previous verification was rejected. You can submit a new request below.');
+        }
+      }
+    }
+  }, [user]);
+
+  // Show loading while checking auth
+  if (loading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -64,7 +109,7 @@ export default function InvestorVerificationPage() {
   }
 
   const validateForm = () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
       return "Please fill in all personal information fields"
     }
 
@@ -74,11 +119,6 @@ export default function InvestorVerificationPage() {
 
     if (!formData.frontIdCard || !formData.backIdCard) {
       return "Please upload both front and back ID card images"
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      return "Please enter a valid email address"
     }
 
     return null
@@ -112,6 +152,7 @@ export default function InvestorVerificationPage() {
       const response = await fetch('/api/auth/investor-verification', {
         method: 'POST',
         body: submitData,
+        credentials: 'include', // Include cookies for authentication
       })
 
       const data = await response.json()
@@ -209,17 +250,6 @@ export default function InvestorVerificationPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                  />
-                </div>
-                <div>
                   <Label htmlFor="phone">Phone Number *</Label>
                   <Input
                     id="phone"
@@ -228,6 +258,17 @@ export default function InvestorVerificationPage() {
                     placeholder="Enter your phone number"
                     required
                   />
+                </div>
+                <div>
+                  <Label>Registered Email</Label>
+                  <Input
+                    value={user?.email || ""}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Using your account email address
+                  </p>
                 </div>
               </div>
             </div>

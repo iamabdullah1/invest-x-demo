@@ -63,7 +63,7 @@ export default function AdminInvestorsPage() {
   const fetchVerifications = async () => {
     try {
       setLoading(true)
-      // Fetch from investor_verifications collection
+      // Fetch verification requests from users collection
       const response = await fetch(`/api/admin/investor-verifications?status=${statusFilter}`, {
         method: 'GET',
         headers: {

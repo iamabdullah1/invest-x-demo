@@ -4,4 +4,3 @@ export { default as User, type IUser } from './User';
 export { default as Project, type IProject } from './Project';
 export { default as Investment, type IInvestment } from './Investment';
 export { default as Transaction, type ITransaction } from './Transaction';
-export { default as InvestorVerification, type IInvestorVerification } from './InvestorVerification';

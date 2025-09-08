@@ -7,8 +7,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { LandingPage } from "@/components/landing-page";
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    // Always refresh user data when home page loads to get latest role
+    if (!loading) {
+      refreshUser();
+    }
+  }, [loading, refreshUser]);
+
+  // Periodic refresh to check for role updates (every 2 minutes)
+  useEffect(() => {
+    if (!loading && user) {
+      const interval = setInterval(() => {
+        refreshUser();
+      }, 120000); // 2 minutes
+
+      return () => clearInterval(interval);
+    }
+  }, [loading, user, refreshUser]);
 
   useEffect(() => {
     if (!loading && user) {

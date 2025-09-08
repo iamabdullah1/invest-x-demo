@@ -19,23 +19,47 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
-    // Build query for investor_verifications collection
+    // Build query for users collection - fetch users with verification requests
     const query: any = {};
     if (status && status !== 'all') {
-      query.status = status;
+      query.verificationStatus = status;
+    } else {
+      // Show all users who have submitted verification (not 'none')
+      query.verificationStatus = { $ne: 'none' };
     }
 
-    // Get the investor_verifications collection
-    const collection = await getCollection('investor_verifications');
+    // Get the users collection
+    const usersCollection = await getCollection('users');
     
-    const verifications = await collection
+    const users = await usersCollection
       .find(query)
-      .sort({ submittedAt: -1 })
+      .sort({ 'verificationData.submittedAt': -1 })
       .skip(skip)
       .limit(limit)
       .toArray();
 
-    const total = await collection.countDocuments(query);
+    const total = await usersCollection.countDocuments(query);
+
+    // Transform user data to match expected verification format
+    const verifications = users.map(user => ({
+      _id: user._id,
+      verificationId: user.verificationData?.verificationId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      address: user.verificationData?.address,
+      city: user.city,
+      postalCode: user.verificationData?.postalCode,
+      frontIdUrl: user.verificationData?.frontIdUrl,
+      backIdUrl: user.verificationData?.backIdUrl,
+      status: user.verificationStatus,
+      submittedAt: user.verificationData?.submittedAt,
+      reviewedAt: user.verificationData?.reviewedAt,
+      reviewedBy: user.verificationData?.reviewedBy,
+      rejectionReason: user.verificationData?.rejectionReason,
+      role: user.role
+    }));
 
     return NextResponse.json({
       success: true,

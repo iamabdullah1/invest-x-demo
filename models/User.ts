@@ -38,6 +38,22 @@ export interface IUser extends Document {
   isActive: boolean;
   lastLogin?: Date;
   
+  // Investor verification fields
+  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  verificationData?: {
+    verificationId?: string;
+    address?: string;
+    postalCode?: string;
+    frontIdUrl?: string;
+    frontIdPublicId?: string;
+    backIdUrl?: string;
+    backIdPublicId?: string;
+    submittedAt?: Date;
+    reviewedAt?: Date;
+    reviewedBy?: string;
+    rejectionReason?: string;
+  };
+  
   // Methods
   comparePassword(candidatePassword: string): Promise<boolean>;
   getFullName(): string;
@@ -145,6 +161,55 @@ const userSchema = new Schema<IUser>({
   },
   lastLogin: {
     type: Date
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none'
+  },
+  verificationData: {
+    verificationId: {
+      type: String,
+      trim: true
+    },
+    address: {
+      type: String,
+      trim: true
+    },
+    postalCode: {
+      type: String,
+      trim: true
+    },
+    frontIdUrl: {
+      type: String,
+      trim: true
+    },
+    frontIdPublicId: {
+      type: String,
+      trim: true
+    },
+    backIdUrl: {
+      type: String,
+      trim: true
+    },
+    backIdPublicId: {
+      type: String,
+      trim: true
+    },
+    submittedAt: {
+      type: Date
+    },
+    reviewedAt: {
+      type: Date
+    },
+    reviewedBy: {
+      type: String,
+      trim: true
+    },
+    rejectionReason: {
+      type: String,
+      trim: true
+    }
   }
 }, {
   timestamps: true,
@@ -156,6 +221,7 @@ const userSchema = new Schema<IUser>({
 // email index is already created by unique: true, no need to duplicate
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
+userSchema.index({ verificationStatus: 1 });
 userSchema.index({ createdAt: -1 });
 
 // Virtual for full name
