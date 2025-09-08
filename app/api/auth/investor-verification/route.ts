@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import CloudinaryService from '@/lib/cloudinary';
+import { getCollection } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file sizes (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file sizes (500KB limit for ID cards)
+    const maxSize = 500 * 1024; // 500KB
     if (frontIdCard.size > maxSize || backIdCard.size > maxSize) {
       return NextResponse.json(
-        { error: 'File size must be less than 5MB' },
+        { error: 'ID card file size must be less than 500KB' },
         { status: 400 }
       );
     }
@@ -53,29 +53,33 @@ export async function POST(request: NextRequest) {
     // Generate unique verification ID
     const verificationId = uuidv4();
     
-    // Create upload directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'uploads', 'verifications', verificationId);
-    await mkdir(uploadDir, { recursive: true });
+    console.log(`📤 Starting Cloudinary upload for verification: ${verificationId}`);
 
-    // Save files
+    // Convert files to buffers
     const frontIdBytes = await frontIdCard.arrayBuffer();
     const backIdBytes = await backIdCard.arrayBuffer();
     
-    const frontIdExtension = frontIdCard.name.split('.').pop();
-    const backIdExtension = backIdCard.name.split('.').pop();
-    
-    const frontIdPath = join(uploadDir, `front-id.${frontIdExtension}`);
-    const backIdPath = join(uploadDir, `back-id.${backIdExtension}`);
-    
-    await writeFile(frontIdPath, Buffer.from(frontIdBytes));
-    await writeFile(backIdPath, Buffer.from(backIdBytes));
+    const frontIdBuffer = Buffer.from(frontIdBytes);
+    const backIdBuffer = Buffer.from(backIdBytes);
 
-    // Here you would typically:
-    // 1. Save the verification data to your database
-    // 2. Send notification emails to admin
-    // 3. Create a verification record with pending status
-    
-    // For now, we'll simulate the database save
+    // Upload to Cloudinary
+    const uploadResult = await CloudinaryService.uploadVerificationDocuments(
+      frontIdBuffer,
+      backIdBuffer,
+      verificationId
+    );
+
+    if (!uploadResult.success) {
+      console.error('Cloudinary upload failed:', uploadResult.error);
+      return NextResponse.json(
+        { error: 'Failed to upload verification documents. Please try again.' },
+        { status: 500 }
+      );
+    }
+
+    console.log(`✅ Cloudinary upload successful for verification: ${verificationId}`);
+
+    // Prepare verification data for database
     const verificationData = {
       verificationId,
       firstName,
@@ -85,23 +89,43 @@ export async function POST(request: NextRequest) {
       address,
       city,
       postalCode,
-      frontIdPath: `uploads/verifications/${verificationId}/front-id.${frontIdExtension}`,
-      backIdPath: `uploads/verifications/${verificationId}/back-id.${backIdExtension}`,
+      frontIdUrl: uploadResult.frontId?.url,
+      frontIdPublicId: uploadResult.frontId?.public_id,
+      backIdUrl: uploadResult.backId?.url,
+      backIdPublicId: uploadResult.backId?.public_id,
       status: 'pending',
-      submittedAt: new Date().toISOString(),
+      submittedAt: new Date(),
+      cloudinaryUpload: true,
     };
 
-    console.log('Investor verification submitted:', verificationData);
+    // Save to MongoDB
+    try {
+      const verificationCollection = await getCollection('investor_verifications');
+      const insertResult = await verificationCollection.insertOne(verificationData);
+      
+      console.log(`💾 Verification saved to MongoDB with ID: ${insertResult.insertedId}`);
+    } catch (dbError: any) {
+      console.error('❌ Database save error:', dbError);
+      // Continue anyway - Cloudinary upload was successful
+    }
 
-    // In a real application, you would save this to your database
-    // await saveVerificationToDatabase(verificationData);
+    console.log('✅ Investor verification submitted successfully:', {
+      verificationId,
+      email,
+      frontIdUrl: uploadResult.frontId?.url,
+      backIdUrl: uploadResult.backId?.url,
+    });
 
     // Send success response
     return NextResponse.json({
       success: true,
       message: 'Verification request submitted successfully',
       verificationId,
-      status: 'pending'
+      status: 'pending',
+      documentUrls: {
+        frontId: uploadResult.frontId?.url,
+        backId: uploadResult.backId?.url,
+      }
     });
 
   } catch (error: any) {
