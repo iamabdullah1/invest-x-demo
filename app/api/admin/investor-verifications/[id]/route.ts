@@ -24,12 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    if (action === 'reject' && !rejectionReason) {
-      return NextResponse.json(
-        { error: 'Rejection reason is required when rejecting' },
-        { status: 400 }
-      );
-    }
+    // Rejection reason is now optional
 
     // Get the users collection
     const usersCollection = await getCollection('users');
@@ -106,6 +101,82 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     console.error('Error processing verification:', error);
     return NextResponse.json(
       { error: 'Failed to process verification' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    // Verify admin authentication
+    const { user, error } = await JWTAuthService.requireAuth(request);
+    if (error || !user || user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    const { id } = params;
+
+    // Get the users collection
+    const usersCollection = await getCollection('users');
+
+    // Find the user by ID
+    const targetUser = await usersCollection.findOne({ _id: new ObjectId(id) });
+    if (!targetUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if verification is approved - prevent deletion
+    if (targetUser.verificationStatus === 'approved') {
+      return NextResponse.json(
+        { error: 'Cannot delete approved verification requests. Approved investors cannot have their verification status revoked.' },
+        { status: 400 }
+      );
+    }
+
+    // Reset verification data and status to 'none'
+    const updateResult = await usersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { 
+        $set: {
+          verificationStatus: 'none',
+          updatedAt: new Date()
+        },
+        $unset: {
+          verificationData: 1 // Remove the entire verificationData object
+        }
+      }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log(`🗑️ Verification request deleted by admin ${user.email} for user: ${targetUser.email}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Verification request deleted successfully',
+      verification: {
+        id: id,
+        status: 'deleted',
+        deletedAt: new Date(),
+        deletedBy: `${user.firstName} ${user.lastName}`
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Error deleting verification:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete verification request' },
       { status: 500 }
     );
   }
