@@ -140,8 +140,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      }
-    } catch (dbError) {
     } catch (dbError: any) {
       return NextResponse.json(
         { error: 'Failed to update user verification data' },
@@ -162,7 +160,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Investor verification error:', error);
     return NextResponse.json(
       { error: 'Failed to process verification request' },
       { status: 500 }

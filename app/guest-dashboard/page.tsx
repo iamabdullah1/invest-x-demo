@@ -38,14 +38,14 @@ export default function GuestDashboardPage() {
         }
       }
     } catch (error) {
-      console.error('Error checking verification status:', error)
+      // Handle error silently to avoid console pollution
     }
   }
 
-  // Auto-refresh verification status every 30 seconds
+  // Auto-refresh verification status every 2 minutes (reduced from 30 seconds)
   useEffect(() => {
     checkVerificationStatus()
-    const interval = setInterval(checkVerificationStatus, 30000)
+    const interval = setInterval(checkVerificationStatus, 120000) // 2 minutes instead of 30 seconds
     return () => clearInterval(interval)
   }, [user])
 
