@@ -48,6 +48,25 @@ export interface IUser extends Document {
     addedAt: Date;
   }>;
   
+  // Investments
+  investments: Array<{
+    projectId: string;
+    amount: number;
+    investedAt: Date;
+  }>;
+  
+  // User Notifications
+  userNotifications: Array<{
+    _id?: string;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    read: boolean;
+    createdAt: Date;
+    relatedProjectId?: string;
+    actionUrl?: string;
+  }>;
+  
   // Investor verification fields
   verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
   verificationData?: {
@@ -190,6 +209,55 @@ const userSchema = new Schema<IUser>({
     addedAt: {
       type: Date,
       default: Date.now
+    }
+  }],
+  investments: [{
+    projectId: {
+      type: String,
+      ref: 'Project',
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    investedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  userNotifications: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    type: {
+      type: String,
+      enum: ['info', 'success', 'warning', 'error'],
+      required: true
+    },
+    read: {
+      type: Boolean,
+      default: false
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    relatedProjectId: {
+      type: String,
+      ref: 'Project'
+    },
+    actionUrl: {
+      type: String,
+      trim: true
     }
   }],
   verificationStatus: {

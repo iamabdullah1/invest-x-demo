@@ -1,3 +1,7 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import React from "react"
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -6,24 +10,126 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrendingUp, TrendingDown, Building2, DollarSign, BarChart3, Eye, Download } from "lucide-react"
 import Link from "next/link"
-import { mockProjects, mockInvestments, formatCurrency, calculateProgress } from "@/lib/mockData"
+import { formatPKR, formatPKRReturn, formatPKRPercentage } from "@/lib/currency"
+
+interface Project {
+  _id: string
+  title: string
+  location: {
+    city: string
+    area: string
+  }
+  type: string
+  status: string
+  targetAmount: number
+  raisedAmount: number
+  expectedReturn: number
+  images: string[]
+}
+
+interface Investment {
+  id: string
+  projectId: string
+  amount: number
+  investedAt: string
+  currentValue: number
+  returns: number
+  project: Project
+}
+
+interface PortfolioData {
+  investments: Investment[]
+  summary: {
+    totalInvested: number
+    totalCurrentValue: number
+    totalReturns: number
+    returnPercentage: number
+  }
+  performance: Array<{
+    month: string
+    value: number
+  }>
+}
 
 export default function PortfolioPage() {
-  // Calculate portfolio statistics
-  const totalInvested = mockInvestments.reduce((sum, inv) => sum + inv.amount, 0)
-  const totalCurrentValue = mockInvestments.reduce((sum, inv) => sum + inv.currentValue, 0)
-  const totalReturns = totalCurrentValue - totalInvested
-  const returnPercentage = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Performance data for chart (mock)
-  const performanceData = [
-    { month: "Jan", value: totalInvested * 0.95 },
-    { month: "Feb", value: totalInvested * 0.98 },
-    { month: "Mar", value: totalInvested * 1.02 },
-    { month: "Apr", value: totalInvested * 1.05 },
-    { month: "May", value: totalInvested * 1.08 },
-    { month: "Jun", value: totalCurrentValue },
-  ]
+  const calculateProgress = (raised: number, target: number) => {
+    if (target === 0) return 0
+    return Math.min((raised / target) * 100, 100)
+  }
+
+  useEffect(() => {
+    fetchPortfolio()
+  }, [])
+
+  const fetchPortfolio = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/user/portfolio')
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setPortfolioData(data.portfolio)
+        } else {
+          setError(data.message || 'Failed to fetch portfolio')
+        }
+      } else {
+        setError('Failed to fetch portfolio')
+      }
+    } catch (error) {
+      console.error('Error fetching portfolio:', error)
+      setError('Failed to fetch portfolio')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="space-y-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg">Loading portfolio...</div>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
+
+  if (error) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="space-y-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg text-red-600">{error}</div>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
+
+  if (!portfolioData || portfolioData.investments.length === 0) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="space-y-8">
+          <div className="text-center py-12">
+            <Building2 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">No Investments Yet</h1>
+            <p className="text-muted-foreground mb-6">Start building your real estate portfolio today</p>
+            <Button asChild>
+              <Link href="/projects">Browse Projects</Link>
+            </Button>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
+
+  const { summary, performance, investments } = portfolioData
 
   return (
     <RoleGuard requiredRole="investor">
@@ -56,9 +162,9 @@ export default function PortfolioPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalCurrentValue)}</div>
+              <div className="text-2xl font-bold">{formatPKR(summary.totalCurrentValue, { compact: true })}</div>
               <p className="text-xs text-green-600 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />+{returnPercentage.toFixed(1)}% from invested
+                <TrendingUp className="h-3 w-3 mr-1" />+{formatPKRPercentage(summary.returnPercentage)} from invested
               </p>
             </CardContent>
           </Card>
@@ -69,8 +175,8 @@ export default function PortfolioPage() {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
-              <p className="text-xs text-muted-foreground">Across {mockInvestments.length} projects</p>
+              <div className="text-2xl font-bold">{formatPKR(summary.totalInvested, { compact: true })}</div>
+              <p className="text-xs text-muted-foreground">Across {investments.length} projects</p>
             </CardContent>
           </Card>
 
@@ -80,7 +186,7 @@ export default function PortfolioPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatCurrency(totalReturns)}</div>
+              <div className="text-2xl font-bold text-green-600">{formatPKR(summary.totalReturns, { compact: true })}</div>
               <p className="text-xs text-muted-foreground">Unrealized gains</p>
             </CardContent>
           </Card>
@@ -91,7 +197,7 @@ export default function PortfolioPage() {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockInvestments.length}</div>
+              <div className="text-2xl font-bold">{investments.length}</div>
               <p className="text-xs text-muted-foreground">Investment positions</p>
             </CardContent>
           </Card>
@@ -107,12 +213,9 @@ export default function PortfolioPage() {
 
           <TabsContent value="investments" className="space-y-6">
             <div className="grid grid-cols-1 gap-6">
-              {mockInvestments.map((investment) => {
-                const project = mockProjects.find((p) => p.id === investment.projectId)
-                if (!project) return null
-
+              {investments.map((investment) => {
                 const returnPercentage = (investment.returns / investment.amount) * 100
-                const projectProgress = calculateProgress(project.raisedAmount, project.targetAmount)
+                const projectProgress = calculateProgress(investment.project.raisedAmount, investment.project.targetAmount)
 
                 return (
                   <Card key={investment.id}>
@@ -120,8 +223,8 @@ export default function PortfolioPage() {
                       <div className="flex items-start space-x-6">
                         <div className="w-24 h-24 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                           <img
-                            src={project.images[0] || "/placeholder.svg"}
-                            alt={project.title}
+                            src={investment.project.images?.[0] || "/placeholder.svg"}
+                            alt={investment.project.title}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -129,18 +232,18 @@ export default function PortfolioPage() {
                         <div className="flex-1 space-y-4">
                           <div className="flex items-start justify-between">
                             <div>
-                              <h3 className="text-xl font-semibold">{project.title}</h3>
-                              <p className="text-muted-foreground">{project.location}</p>
+                              <h3 className="text-xl font-semibold">{investment.project.title}</h3>
+                              <p className="text-muted-foreground">{investment.project.location.area}, {investment.project.location.city}</p>
                               <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="secondary">{project.type}</Badge>
-                                <Badge variant="outline">{project.expectedReturn}% Target</Badge>
-                                <Badge variant={project.status === "active" ? "default" : "secondary"}>
-                                  {project.status}
+                                <Badge variant="secondary">{investment.project.type}</Badge>
+                                <Badge variant="outline">{investment.project.expectedReturn}% Target</Badge>
+                                <Badge variant={investment.project.status === "active" ? "default" : "secondary"}>
+                                  {investment.project.status}
                                 </Badge>
                               </div>
                             </div>
                             <Button variant="outline" asChild>
-                              <Link href={`/projects/${project.id}`}>
+                              <Link href={`/projects/${investment.project._id}`}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Project
                               </Link>
@@ -150,11 +253,11 @@ export default function PortfolioPage() {
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div>
                               <div className="text-sm text-muted-foreground">Investment Amount</div>
-                              <div className="text-lg font-semibold">{formatCurrency(investment.amount)}</div>
+                              <div className="text-lg font-semibold">{formatPKR(investment.amount)}</div>
                             </div>
                             <div>
                               <div className="text-sm text-muted-foreground">Current Value</div>
-                              <div className="text-lg font-semibold">{formatCurrency(investment.currentValue)}</div>
+                              <div className="text-lg font-semibold">{formatPKR(investment.currentValue)}</div>
                             </div>
                             <div>
                               <div className="text-sm text-muted-foreground">Returns</div>
@@ -168,27 +271,21 @@ export default function PortfolioPage() {
                                 ) : (
                                   <TrendingDown className="h-4 w-4 mr-1" />
                                 )}
-                                {formatCurrency(Math.abs(investment.returns))} ({returnPercentage >= 0 ? "+" : ""}
-                                {returnPercentage.toFixed(1)}%)
+                                {formatPKRReturn(investment.amount, investment.currentValue)}
                               </div>
                             </div>
                             <div>
-                              <div className="text-sm text-muted-foreground">Shares Owned</div>
-                              <div className="text-lg font-semibold">{investment.shares}</div>
+                              <div className="text-sm text-muted-foreground">Investment Date</div>
+                              <div className="text-lg font-semibold">{new Date(investment.investedAt).toLocaleDateString()}</div>
                             </div>
                           </div>
 
                           <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                               <span>Project Progress</span>
-                              <span>{projectProgress}%</span>
+                              <span>{projectProgress.toFixed(1)}%</span>
                             </div>
                             <Progress value={projectProgress} />
-                          </div>
-
-                          <div className="flex items-center justify-between text-sm text-muted-foreground">
-                            <span>Purchased: {new Date(investment.purchaseDate).toLocaleDateString()}</span>
-                            <span>Duration: {project.duration} months</span>
                           </div>
                         </div>
                       </div>
@@ -208,24 +305,34 @@ export default function PortfolioPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">+{returnPercentage.toFixed(1)}%</div>
+                      <div className="text-2xl font-bold text-green-600">+{summary.returnPercentage.toFixed(1)}%</div>
                       <div className="text-sm text-muted-foreground">Total Return</div>
                     </div>
                     <div className="text-center p-4 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold">6 months</div>
-                      <div className="text-sm text-muted-foreground">Avg. Holding Period</div>
+                      <div className="text-2xl font-bold">{investments.length}</div>
+                      <div className="text-sm text-muted-foreground">Active Investments</div>
                     </div>
                     <div className="text-center p-4 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold">2</div>
-                      <div className="text-sm text-muted-foreground">Active Projects</div>
+                      <div className="text-2xl font-bold">{formatPKR(summary.totalCurrentValue / investments.length || 0, { compact: true })}</div>
+                      <div className="text-sm text-muted-foreground">Avg. Investment</div>
                     </div>
                   </div>
 
-                  {/* Mock Performance Chart */}
-                  <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">Performance chart would be displayed here</p>
+                  {/* Performance Chart Data */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium">6-Month Performance Trend</h4>
+                    <div className="grid grid-cols-6 gap-2">
+                      {performance.map((data, index) => (
+                        <div key={index} className="text-center">
+                          <div className="h-24 bg-muted rounded flex items-end p-2">
+                            <div 
+                              className="w-full bg-blue-600 rounded-t"
+                              style={{ height: `${(data.value / summary.totalCurrentValue) * 100}%` } as React.CSSProperties}
+                            />
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{data.month}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -240,30 +347,25 @@ export default function PortfolioPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockInvestments.map((investment) => {
-                    const project = mockProjects.find((p) => p.id === investment.projectId)
-                    if (!project) return null
-
-                    return (
-                      <div key={investment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                            <TrendingUp className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium">Investment Purchase</div>
-                            <div className="text-sm text-muted-foreground">{project.title}</div>
-                          </div>
+                  {investments.map((investment) => (
+                    <div key={investment.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <TrendingUp className="h-5 w-5 text-green-600" />
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">{formatCurrency(investment.amount)}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(investment.purchaseDate).toLocaleDateString()}
-                          </div>
+                        <div>
+                          <div className="font-medium">Investment Purchase</div>
+                          <div className="text-sm text-muted-foreground">{investment.project.title}</div>
                         </div>
                       </div>
-                    )
-                  })}
+                      <div className="text-right">
+                        <div className="font-medium">{formatPKR(investment.amount)}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(investment.investedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

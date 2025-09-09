@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, Building2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { formatPKR, validatePKRAmount, parsePKR } from "@/lib/currency"
 
 interface CartItem {
   projectId: string
@@ -37,15 +38,6 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
 
   useEffect(() => {
     fetchCart()
@@ -229,13 +221,13 @@ export default function CartPage() {
                           <div>
                             <label className="text-sm font-medium">Projected Returns</label>
                             <div className="text-lg font-semibold text-green-600 mt-1">
-                              {formatCurrency(item.amount * (item.project.expectedReturn / 100))}
+                              {formatPKR(item.amount * (item.project.expectedReturn / 100))}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between pt-4 border-t">
-                          <div className="text-lg font-semibold">Total: {formatCurrency(item.amount)}</div>
+                          <div className="text-lg font-semibold">Total: {formatPKR(item.amount)}</div>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -263,11 +255,11 @@ export default function CartPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Total Investment</span>
-                      <span className="font-medium">{formatCurrency(totalAmount)}</span>
+                      <span className="font-medium">{formatPKR(totalAmount)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Processing Fee (1%)</span>
-                      <span className="font-medium">{formatCurrency(processingFee)}</span>
+                      <span className="font-medium">{formatPKR(processingFee)}</span>
                     </div>
                   </div>
 
@@ -275,7 +267,7 @@ export default function CartPage() {
 
                   <div className="flex justify-between text-lg font-semibold">
                     <span>Total Amount</span>
-                    <span>{formatCurrency(totalAmount + processingFee)}</span>
+                    <span>{formatPKR(totalAmount + processingFee)}</span>
                   </div>
 
                   <Button onClick={handleCheckout} className="w-full" size="lg">

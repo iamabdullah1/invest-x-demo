@@ -1,60 +1,94 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Bell, CheckCircle, Info, AlertTriangle, TrendingUp, Building2, DollarSign, Settings } from "lucide-react"
-import { mockNotifications } from "@/lib/mockData"
+import { Bell, CheckCircle, Info, AlertTriangle, TrendingUp, Building2, DollarSign, Settings, X } from "lucide-react"
 
 interface Notification {
-  id: string
+  _id: string
   title: string
   message: string
   type: "info" | "success" | "warning" | "error"
-  date: string
   read: boolean
+  createdAt: string
+  relatedProjectId?: string
+  actionUrl?: string
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    ...mockNotifications,
-    {
-      id: "notif-4",
-      title: "Project Completion",
-      message:
-        "Centaurus Mall Extension project has been completed successfully. Returns will be distributed within 7 days.",
-      type: "success",
-      date: "2024-08-19",
-      read: false,
-    },
-    {
-      id: "notif-5",
-      title: "Market Update",
-      message:
-        "Real estate market in Karachi shows 12% growth this quarter. Consider increasing your portfolio allocation.",
-      type: "info",
-      date: "2024-08-17",
-      read: true,
-    },
-    {
-      id: "notif-6",
-      title: "Payment Reminder",
-      message: "Your investment installment for Blue World City is due in 3 days. Please ensure sufficient balance.",
-      type: "warning",
-      date: "2024-08-16",
-      read: false,
-    },
-  ] as Notification[])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif)))
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/user/notifications')
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setNotifications(data.notifications || [])
+        } else {
+          setError(data.message || 'Failed to fetch notifications')
+        }
+      } else {
+        setError('Failed to fetch notifications')
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      setError('Failed to fetch notifications')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })))
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch('/api/user/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notificationId, markAsRead: true })
+      })
+
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif._id === notificationId 
+              ? { ...notif, read: true }
+              : notif
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/user/notifications', {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, read: true }))
+        )
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+    }
   }
 
   const getIcon = (type: string) => {
@@ -93,6 +127,30 @@ export default function NotificationsPage() {
   const systemNotifications = notifications.filter(
     (n) => n.title.includes("Payment") || n.title.includes("Account") || n.title.includes("Security"),
   )
+
+  if (loading) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="space-y-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg">Loading notifications...</div>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
+
+  if (error) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="space-y-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg text-red-600">{error}</div>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
 
   return (
     <RoleGuard requiredRole="investor">
@@ -183,11 +241,11 @@ export default function NotificationsPage() {
             <div className="space-y-4">
               {notifications.map((notification) => (
                 <Card
-                  key={notification.id}
+                  key={notification._id}
                   className={`cursor-pointer transition-colors ${
                     !notification.read ? "border-primary/50 bg-primary/5" : ""
                   }`}
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => markAsRead(notification._id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -202,7 +260,7 @@ export default function NotificationsPage() {
                         </div>
                         <p className="text-muted-foreground">{notification.message}</p>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(notification.date).toLocaleDateString()}
+                          {new Date(notification.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
@@ -216,11 +274,11 @@ export default function NotificationsPage() {
             <div className="space-y-4">
               {investmentNotifications.map((notification) => (
                 <Card
-                  key={notification.id}
+                  key={notification._id}
                   className={`cursor-pointer transition-colors ${
                     !notification.read ? "border-primary/50 bg-primary/5" : ""
                   }`}
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => markAsRead(notification._id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -235,7 +293,7 @@ export default function NotificationsPage() {
                         </div>
                         <p className="text-muted-foreground">{notification.message}</p>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(notification.date).toLocaleDateString()}
+                          {new Date(notification.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
@@ -249,11 +307,11 @@ export default function NotificationsPage() {
             <div className="space-y-4">
               {marketNotifications.map((notification) => (
                 <Card
-                  key={notification.id}
+                  key={notification._id}
                   className={`cursor-pointer transition-colors ${
                     !notification.read ? "border-primary/50 bg-primary/5" : ""
                   }`}
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => markAsRead(notification._id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -268,7 +326,7 @@ export default function NotificationsPage() {
                         </div>
                         <p className="text-muted-foreground">{notification.message}</p>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(notification.date).toLocaleDateString()}
+                          {new Date(notification.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
@@ -282,11 +340,11 @@ export default function NotificationsPage() {
             <div className="space-y-4">
               {systemNotifications.map((notification) => (
                 <Card
-                  key={notification.id}
+                  key={notification._id}
                   className={`cursor-pointer transition-colors ${
                     !notification.read ? "border-primary/50 bg-primary/5" : ""
                   }`}
-                  onClick={() => markAsRead(notification.id)}
+                  onClick={() => markAsRead(notification._id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -301,7 +359,7 @@ export default function NotificationsPage() {
                         </div>
                         <p className="text-muted-foreground">{notification.message}</p>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(notification.date).toLocaleDateString()}
+                          {new Date(notification.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>

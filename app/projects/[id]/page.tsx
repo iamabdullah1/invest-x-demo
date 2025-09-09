@@ -14,6 +14,7 @@ import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLef
 import Link from "next/link"
 import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
+import { formatPKR, formatPKRPercentage, validatePKRAmount, parsePKR, amountToWordsPKR } from "@/lib/currency"
 
 interface Project {
   _id: string
@@ -106,15 +107,6 @@ export default function ProjectDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
   }
 
   const calculateProgress = (raised: number, target: number) => {
@@ -286,7 +278,7 @@ export default function ProjectDetailPage() {
               </Card>
               <Card>
                 <CardContent className="p-4">
-                  <div className="text-2xl font-bold">{formatCurrency(project.minInvestment)}</div>
+                  <div className="text-2xl font-bold">{formatPKR(project.minInvestment)}</div>
                   <div className="text-sm text-muted-foreground">Min. Investment</div>
                 </CardContent>
               </Card>
@@ -311,8 +303,8 @@ export default function ProjectDetailPage() {
                   </div>
                   <Progress value={progress} className="h-3" />
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{formatCurrency(project.raisedAmount)} raised</span>
-                    <span>{formatCurrency(remainingAmount)} remaining</span>
+                    <span>{formatPKR(project.raisedAmount, { compact: true })} raised</span>
+                    <span>{formatPKR(remainingAmount, { compact: true })} remaining</span>
                   </div>
                 </div>
               </CardContent>
@@ -332,7 +324,7 @@ export default function ProjectDetailPage() {
                   <Input
                     id="investment"
                     type="number"
-                    placeholder={`Min. ${formatCurrency(project.minInvestment)}`}
+                    placeholder={`Min. ${formatPKR(project.minInvestment)}`}
                     value={investmentAmount}
                     onChange={(e) => setInvestmentAmount(e.target.value)}
                   />
@@ -345,11 +337,11 @@ export default function ProjectDetailPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Projected Returns:</span>
-                      <span className="font-medium text-green-600">{formatCurrency(projectedReturns)}</span>
+                      <span className="font-medium text-green-600">{formatPKR(projectedReturns)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Total Value:</span>
-                      <span className="font-bold">{formatCurrency(investmentValue + projectedReturns)}</span>
+                      <span className="font-bold">{formatPKR(investmentValue + projectedReturns)}</span>
                     </div>
                   </div>
                 )}

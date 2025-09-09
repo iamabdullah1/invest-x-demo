@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, DollarSign, Calendar } from "lucide-react"
+import { Search, MapPin, DollarSign, Calendar, Heart } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
+import { formatPKR, formatPKRPercentage } from "@/lib/currency"
 
 interface Project {
   _id: string
@@ -54,13 +55,6 @@ const ProjectCard = memo(({ project }: { project: Project }) => {
     checkWishlistStatus()
   }, [project._id])
   
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR'
-    }).format(amount)
-  }, [])
-
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500'
@@ -203,7 +197,7 @@ const ProjectCard = memo(({ project }: { project: Project }) => {
           {project.targetAmount && (
             <div className="flex items-center text-sm text-muted-foreground">
               <DollarSign className="h-4 w-4 mr-2" />
-              Target: {formatCurrency(project.targetAmount)}
+              Target: {formatPKR(project.targetAmount, { compact: true })}
             </div>
           )}
         </div>
@@ -232,15 +226,6 @@ export default function ProjectsPage() {
   const calculateProgress = useCallback((raised: number, target: number) => {
     if (target === 0) return 0
     return Math.min((raised / target) * 100, 100)
-  }, [])
-
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
   }, [])
 
   const getStatusBadgeColor = useCallback((status: string) => {
