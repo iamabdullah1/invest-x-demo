@@ -1,56 +1,143 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { RoleGuard } from "@/components/role-guard"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { mockProjects, formatCurrency, calculateProgress, type Project } from "@/lib/mockData"
 import { Target, TrendingUp, MapPin, Calendar, Heart, ShoppingCart, Sparkles } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
+interface Project {
+  _id: string
+  id: string
+  title: string
+  location: string
+  city: string
+  type: "residential" | "commercial" | "mixed"
+  status: "active" | "funded" | "completed"
+  targetAmount: number
+  raisedAmount: number
+  minInvestment: number
+  expectedReturn: number
+  duration: number
+  images: string[]
+  description: string
+  riskLevel: "low" | "medium" | "high"
+  progress: number
+  category: string
+  features: string[]
+}
+
+interface RecommendationsData {
+  recommendations: Project[]
+  filters: {
+    riskTolerance: string
+    investmentAmount: number
+    preferredCity: string
+    propertyType: string
+    duration: string
+  }
+  totalProjects: number
+  filteredCount: number
+}
+
 export default function RecommendationsPage() {
   const [riskTolerance, setRiskTolerance] = useState<string>("medium")
-  const [investmentAmount, setInvestmentAmount] = useState([5000000]) // PKR 50 Lakh
+  const [investmentAmount, setInvestmentAmount] = useState([5000000]) // PKR 50 Lakh - for API calls
+  const [sliderValue, setSliderValue] = useState([5000000]) // PKR 50 Lakh - for slider display
   const [preferredCity, setPreferredCity] = useState<string>("all")
   const [propertyType, setPropertyType] = useState<string>("all")
   const [duration, setDuration] = useState<string>("all")
+  const [recommendations, setRecommendations] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [updateTimer, setUpdateTimer] = useState<number | null>(null)
 
-  const getRecommendations = (): Project[] => {
-    let filtered = mockProjects.filter((project) => project.status === "active")
+  // Debounced effect for investment amount changes
+  useEffect(() => {
+    if (sliderValue[0] !== investmentAmount[0]) {
+      setUpdateTimer(5) // Start 5 second countdown
+      
+      const countdownInterval = setInterval(() => {
+        setUpdateTimer(prev => {
+          if (prev && prev > 1) {
+            return prev - 1
+          } else {
+            clearInterval(countdownInterval)
+            return null
+          }
+        })
+      }, 100) // Update every 100ms for smooth countdown
 
-    // Filter by risk tolerance
-    if (riskTolerance !== "all") {
-      filtered = filtered.filter((project) => project.riskLevel === riskTolerance)
+      const timeoutId = setTimeout(() => {
+        setInvestmentAmount(sliderValue)
+        setUpdateTimer(null)
+        clearInterval(countdownInterval)
+      }, 500) // 500ms delay
+
+      return () => {
+        clearTimeout(timeoutId)
+        clearInterval(countdownInterval)
+      }
     }
+  }, [sliderValue, investmentAmount])
 
-    // Filter by minimum investment
-    filtered = filtered.filter((project) => project.minInvestment <= investmentAmount[0])
+  // Fetch recommendations when filters change (except sliderValue)
+  useEffect(() => {
+    fetchRecommendations()
+  }, [riskTolerance, investmentAmount, preferredCity, propertyType, duration])
 
-    // Filter by city
-    if (preferredCity !== "all") {
-      filtered = filtered.filter((project) => project.city === preferredCity)
+  const fetchRecommendations = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const params = new URLSearchParams({
+        riskTolerance,
+        investmentAmount: investmentAmount[0].toString(),
+        preferredCity,
+        propertyType,
+        duration
+      })
+
+      const response = await fetch(`/api/recommendations?${params}`, {
+        credentials: 'include'
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setRecommendations(result.data.recommendations)
+      } else {
+        setError(result.error || 'Failed to fetch recommendations')
+        console.error('Failed to fetch recommendations:', result.error)
+      }
+    } catch (error) {
+      setError('Network error occurred')
+      console.error('Error fetching recommendations:', error)
+    } finally {
+      setLoading(false)
     }
-
-    // Filter by property type
-    if (propertyType !== "all") {
-      filtered = filtered.filter((project) => project.type === propertyType)
-    }
-
-    // Filter by duration
-    if (duration !== "all") {
-      const maxDuration = Number.parseInt(duration)
-      filtered = filtered.filter((project) => project.duration <= maxDuration)
-    }
-
-    // Sort by expected return (descending)
-    return filtered.sort((a, b) => b.expectedReturn - a.expectedReturn)
   }
 
-  const recommendations = getRecommendations()
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const getRecommendations = (): Project[] => {
+    return recommendations
+  }
+
+  const filteredRecommendations = getRecommendations()
 
   const addToWishlist = (projectId: string) => {
     const savedWishlist = localStorage.getItem("investx-wishlist")
@@ -62,8 +149,52 @@ export default function RecommendationsPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-3xl font-bold">Investment Recommendations</h1>
+              <p className="text-muted-foreground">Personalized suggestions based on your preferences</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading recommendations...</p>
+            </div>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
+
+  if (error) {
+    return (
+      <RoleGuard requiredRole="investor">
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-3xl font-bold">Investment Recommendations</h1>
+              <p className="text-muted-foreground">Personalized suggestions based on your preferences</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">{error}</p>
+              <Button onClick={fetchRecommendations}>Try Again</Button>
+            </div>
+          </div>
+        </div>
+      </RoleGuard>
+    )
+  }
+
   return (
-    <RoleGuard allowedRoles={["investor"]}>
+    <RoleGuard requiredRole="investor">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center gap-3">
           <Sparkles className="h-8 w-8 text-blue-600" />
@@ -110,6 +241,10 @@ export default function RecommendationsPage() {
                     <SelectItem value="Lahore">Lahore</SelectItem>
                     <SelectItem value="Islamabad">Islamabad</SelectItem>
                     <SelectItem value="Rawalpindi">Rawalpindi</SelectItem>
+                    <SelectItem value="Faisalabad">Faisalabad</SelectItem>
+                    <SelectItem value="Multan">Multan</SelectItem>
+                    <SelectItem value="Peshawar">Peshawar</SelectItem>
+                    <SelectItem value="Quetta">Quetta</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -132,17 +267,28 @@ export default function RecommendationsPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Maximum Investment Amount: {formatCurrency(investmentAmount[0])}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    Maximum Investment Amount: {formatCurrency(sliderValue[0])}
+                  </label>
+                  {updateTimer && (
+                    <span className="text-xs text-blue-600 font-medium animate-pulse">
+                      Updating in 0.{updateTimer}s...
+                    </span>
+                  )}
+                </div>
                 <Slider
-                  value={investmentAmount}
-                  onValueChange={setInvestmentAmount}
+                  value={sliderValue}
+                  onValueChange={setSliderValue}
                   max={50000000}
                   min={500000}
                   step={500000}
                   className="w-full"
                 />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Rs 5 Lakh</span>
+                  <span>Rs 5 Crore</span>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -165,9 +311,17 @@ export default function RecommendationsPage() {
 
         {/* Recommendations */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">{recommendations.length} Recommended Projects</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-xl font-semibold">{filteredRecommendations.length} Recommended Projects</h2>
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span>Updating...</span>
+              </div>
+            )}
+          </div>
 
-          {recommendations.length === 0 ? (
+          {!loading && filteredRecommendations.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -177,7 +331,7 @@ export default function RecommendationsPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendations.map((project, index) => (
+              {filteredRecommendations.map((project, index) => (
                 <Card key={project.id} className="overflow-hidden relative">
                   {index === 0 && (
                     <div className="absolute top-2 left-2 z-10">
@@ -230,12 +384,12 @@ export default function RecommendationsPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Funding Progress</span>
-                        <span>{calculateProgress(project.raisedAmount, project.targetAmount)}%</span>
+                        <span>{project.progress}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${calculateProgress(project.raisedAmount, project.targetAmount)}%` }}
+                          style={{ width: `${project.progress}%` }}
                         />
                       </div>
                     </div>
