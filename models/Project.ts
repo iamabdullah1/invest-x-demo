@@ -388,9 +388,28 @@ projectSchema.index({ fundingDeadline: 1 });
 // slug index is already created by unique: true, no need to duplicate
 projectSchema.index({ tags: 1 });
 
-// Compound indexes
-projectSchema.index({ status: 1, featured: 1 });
-projectSchema.index({ city: 1, type: 1 });
+// Enhanced compound indexes for common query patterns
+projectSchema.index({ status: 1, featured: 1, createdAt: -1 }); // Featured active projects
+projectSchema.index({ status: 1, city: 1, type: 1 }); // Location-type filtering
+projectSchema.index({ status: 1, fundingDeadline: 1 }); // Active projects by deadline
+projectSchema.index({ city: 1, type: 1, featured: 1 }); // Regional featured projects
+projectSchema.index({ 'developer.id': 1, status: 1 }); // Developer's active projects
+
+// Text index for search functionality
+projectSchema.index({ 
+  title: 'text', 
+  location: 'text', 
+  'developer.name': 'text',
+  description: 'text'
+}, { 
+  weights: { 
+    title: 10, 
+    location: 5, 
+    'developer.name': 3, 
+    description: 1 
+  },
+  name: 'project_text_search'
+});
 
 // Virtual for funding progress percentage
 projectSchema.virtual('fundingProgress').get(function() {

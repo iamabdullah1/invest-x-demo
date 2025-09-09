@@ -224,6 +224,12 @@ userSchema.index({ isActive: 1 });
 userSchema.index({ verificationStatus: 1 });
 userSchema.index({ createdAt: -1 });
 
+// Compound indexes for common query patterns
+userSchema.index({ role: 1, isActive: 1 }); // Role-based active user queries
+userSchema.index({ verificationStatus: 1, 'verificationData.submittedAt': -1 }); // Admin verification queries
+userSchema.index({ isActive: 1, createdAt: -1 }); // Active users chronologically
+userSchema.index({ 'refreshTokens.token': 1 }, { sparse: true }); // Token lookup for auth
+
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;

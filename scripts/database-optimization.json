@@ -1,0 +1,7 @@
+{
+  "name": "optimize-database",
+  "scripts": {
+    "db:optimize": "tsx lib/database-indexes.ts",
+    "db:analyze": "tsx lib/database-analysis.ts"
+  }
+}

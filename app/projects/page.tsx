@@ -11,21 +11,21 @@ import Link from "next/link"
 interface Project {
   _id: string
   title: string
-  description: string
-  location: {
-    city: string
-    area: string
-    address: string
-  }
-  targetAmount: number
-  raisedAmount: number
-  expectedReturn: string
-  duration: string
-  riskLevel: 'Low' | 'Medium' | 'High'
+  description?: string
+  location?: any // Make this flexible for now
+  city?: string
+  area?: string
+  targetAmount?: number
+  raisedAmount?: number
+  expectedReturn?: any
+  duration?: any
+  riskLevel?: 'Low' | 'Medium' | 'High'
   status: 'active' | 'completed' | 'upcoming' | 'funded'
-  images: string[]
-  createdAt: string
-  updatedAt: string
+  images?: string[]
+  createdAt?: string
+  updatedAt?: string
+  // Add any other fields that might exist
+  [key: string]: any
 }
 
 export default function ProjectsPage() {
@@ -45,10 +45,26 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
+      console.log('Fetching projects from /api/projects...');
       const response = await fetch('/api/projects')
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json()
-        setProjects(data.projects)
+        console.log('Full API response:', data);
+        console.log('Projects data received:', data.projects);
+        console.log('Projects array length:', data.projects?.length);
+        
+        // Make sure we're setting the projects correctly
+        if (data.success && data.projects) {
+          setProjects(data.projects)
+          console.log('Projects set successfully:', data.projects.length, 'projects');
+        } else {
+          console.warn('API response format issue:', data);
+          setProjects([])
+        }
+      } else {
+        console.error('Failed to fetch projects:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error fetching projects:', error)
@@ -161,6 +177,39 @@ export default function ProjectsPage() {
         </div>
       </div>
 
+      {/* Debug Information */}
+      <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
+        <p><strong>Debug Info:</strong></p>
+        <p>Total projects: {projects.length}</p>
+        <p>Filtered projects: {filteredProjects.length}</p>
+        <p>Search term: "{searchTerm}"</p>
+        <p>Selected filter: {selectedFilter}</p>
+        <p>Loading: {loading ? 'true' : 'false'}</p>
+        <Button 
+          onClick={async () => {
+            try {
+              console.log('Seeding database...');
+              const response = await fetch('/api/test/db-projects', { method: 'POST' });
+              const result = await response.json();
+              console.log('Seed result:', result);
+              if (result.success) {
+                alert(`Database seeded! Found ${result.totalProjectsAfterSeed} projects. Refreshing...`);
+                await fetchProjects(); // Refresh projects
+              } else {
+                alert('Seeding failed: ' + (result.error || 'Unknown error'));
+              }
+            } catch (error) {
+              console.error('Seed error:', error);
+              alert('Seed error: ' + error);
+            }
+          }}
+          className="ml-4"
+          size="sm"
+        >
+          Seed DB
+        </Button>
+      </div>
+
       {/* Projects Grid */}
       {filteredProjects.length === 0 ? (
         <div className="text-center py-12">
@@ -168,6 +217,16 @@ export default function ProjectsPage() {
             {searchTerm || selectedFilter !== 'all' 
               ? 'No projects match your current filters.' 
               : 'No projects available at the moment.'}
+          </div>
+          <div className="text-xs text-gray-400 mb-4 max-w-lg mx-auto">
+            <strong>Debug:</strong> 
+            <pre className="text-left bg-gray-50 p-2 rounded mt-2 overflow-auto max-h-40">
+              {JSON.stringify({ 
+                totalProjects: projects.length, 
+                firstProject: projects[0] || 'No projects',
+                filters: { searchTerm, selectedFilter }
+              }, null, 2)}
+            </pre>
           </div>
           {(searchTerm || selectedFilter !== 'all') && (
             <Button
@@ -184,7 +243,7 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => {
-            const progress = calculateProgress(project.raisedAmount, project.targetAmount)
+            const progress = calculateProgress(project.raisedAmount || 0, project.targetAmount || 1)
             
             return (
               <Card key={project._id} className="hover:shadow-lg transition-shadow duration-200">
@@ -211,8 +270,8 @@ export default function ProjectsPage() {
                       <MapPin className="w-4 h-4" />
                       <span>{project.location.area}, {project.location.city}</span>
                     </div>
-                    <Badge className={getRiskBadgeColor(project.riskLevel)}>
-                      {project.riskLevel} Risk
+                    <Badge className={getRiskBadgeColor(project.riskLevel || 'Medium')}>
+                      {project.riskLevel || 'Medium'} Risk
                     </Badge>
                   </div>
                 </CardHeader>
@@ -236,10 +295,10 @@ export default function ProjectsPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">
-                        Raised: {formatCurrency(project.raisedAmount)}
+                        Raised: {formatCurrency(project.raisedAmount || 0)}
                       </span>
                       <span className="font-medium">
-                        Target: {formatCurrency(project.targetAmount)}
+                        Target: {formatCurrency(project.targetAmount || 0)}
                       </span>
                     </div>
                   </div>
