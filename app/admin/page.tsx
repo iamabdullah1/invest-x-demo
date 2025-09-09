@@ -1,51 +1,86 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Building2, Users, DollarSign, TrendingUp, AlertTriangle, CheckCircle, Plus } from "lucide-react"
+import { Building2, Users, DollarSign, TrendingUp, AlertTriangle, CheckCircle, Plus, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { mockProjects, formatCurrency, calculateProgress } from "@/lib/mockData"
+import { formatCurrency, calculateProgress } from "@/lib/mockData"
+
+interface DashboardStats {
+  totalProjects: number
+  activeProjects: number
+  completedProjects: number
+  upcomingProjects: number
+  totalRaised: number
+  totalTarget: number
+  totalInvestors: number
+  activeInvestors: number
+  pendingApprovals: number
+}
+
+interface RecentProject {
+  _id: string
+  title: string
+  location: {
+    city?: string
+    area?: string
+  }
+  status: string
+  raisedAmount: number
+  targetAmount: number
+  progress: number
+}
+
+interface ActivityItem {
+  id: string
+  type: string
+  message: string
+  time: string
+  status: string
+}
 
 export default function AdminHomePage() {
-  // Calculate admin stats
-  const totalProjects = mockProjects.length
-  const activeProjects = mockProjects.filter((p) => p.status === "active").length
-  const totalRaised = mockProjects.reduce((sum, p) => sum + p.raisedAmount, 0)
-  const totalTarget = mockProjects.reduce((sum, p) => sum + p.targetAmount, 0)
-  const totalInvestors = 1250 // Mock data
-  const pendingApprovals = 8 // Mock data
+  const [stats, setStats] = useState<DashboardStats>({
+    totalProjects: 0,
+    activeProjects: 0,
+    completedProjects: 0,
+    upcomingProjects: 0,
+    totalRaised: 0,
+    totalTarget: 0,
+    totalInvestors: 0,
+    activeInvestors: 0,
+    pendingApprovals: 0
+  })
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Recent activity
-  const recentActivity = [
-    {
-      id: "1",
-      type: "investment",
-      message: "New investment of PKR 2.5L in Emerald Heights",
-      time: "2 hours ago",
-      status: "success",
-    },
-    {
-      id: "2",
-      type: "project",
-      message: "Liberty Commercial Plaza reached 60% funding",
-      time: "4 hours ago",
-      status: "info",
-    },
-    {
-      id: "3",
-      type: "approval",
-      message: "3 new investor applications pending review",
-      time: "6 hours ago",
-      status: "warning",
-    },
-    {
-      id: "4",
-      type: "completion",
-      message: "Centaurus Mall Extension project completed",
-      time: "1 day ago",
-      status: "success",
-    },
-  ]
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/dashboard')
+      const data = await response.json()
+
+      if (data.success) {
+        setStats(data.data.stats)
+        setRecentProjects(data.data.recentProjects)
+        setRecentActivity(data.data.recentActivity)
+      } else {
+        console.error('Failed to fetch dashboard data:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -62,6 +97,16 @@ export default function AdminHomePage() {
                 Add Project
               </Link>
             </Button>
+            <Button variant="outline" onClick={fetchDashboardData} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Loading
+                </>
+              ) : (
+                'Refresh'
+              )}
+            </Button>
           </div>
         </div>
 
@@ -73,8 +118,8 @@ export default function AdminHomePage() {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalProjects}</div>
-              <p className="text-xs text-muted-foreground">{activeProjects} active projects</p>
+              <div className="text-2xl font-bold">{stats.totalProjects}</div>
+              <p className="text-xs text-muted-foreground">{stats.activeProjects} active projects</p>
             </CardContent>
           </Card>
 
@@ -84,8 +129,10 @@ export default function AdminHomePage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalRaised)}</div>
-              <p className="text-xs text-green-600">{((totalRaised / totalTarget) * 100).toFixed(1)}% of target</p>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalRaised)}</div>
+              <p className="text-xs text-green-600">
+                {stats.totalTarget > 0 ? ((stats.totalRaised / stats.totalTarget) * 100).toFixed(1) : 0}% of target
+              </p>
             </CardContent>
           </Card>
 
@@ -95,8 +142,8 @@ export default function AdminHomePage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalInvestors.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">+12% this month</p>
+              <div className="text-2xl font-bold">{stats.totalInvestors}</div>
+              <p className="text-xs text-muted-foreground">{stats.activeInvestors} active investors</p>
             </CardContent>
           </Card>
 
@@ -106,7 +153,7 @@ export default function AdminHomePage() {
               <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingApprovals}</div>
+              <div className="text-2xl font-bold">{stats.pendingApprovals}</div>
               <p className="text-xs text-yellow-600">Requires attention</p>
             </CardContent>
           </Card>
@@ -119,37 +166,54 @@ export default function AdminHomePage() {
               <CardTitle>Project Status Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockProjects.map((project) => (
-                <div key={project.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{project.title}</h4>
-                      <p className="text-sm text-muted-foreground">{project.location}</p>
-                    </div>
-                    <Badge
-                      variant={
-                        project.status === "active" ? "default" : project.status === "funded" ? "secondary" : "outline"
-                      }
-                    >
-                      {project.status}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>Progress</span>
-                      <span>{calculateProgress(project.raisedAmount, project.targetAmount)}%</span>
-                    </div>
-                    <Progress value={calculateProgress(project.raisedAmount, project.targetAmount)} />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{formatCurrency(project.raisedAmount)}</span>
-                      <span>{formatCurrency(project.targetAmount)}</span>
-                    </div>
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading projects...</span>
                 </div>
-              ))}
-              <Button variant="outline" asChild className="w-full bg-transparent">
-                <Link href="/admin/projects">Manage All Projects</Link>
-              </Button>
+              ) : recentProjects.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No projects found.</p>
+                </div>
+              ) : (
+                <>
+                  {recentProjects.map((project) => (
+                    <div key={project._id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">{project.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {project.location?.area || ''}{project.location?.area && project.location?.city ? ', ' : ''}{project.location?.city || ''}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            project.status === "active" ? "default" : 
+                            project.status === "completed" ? "secondary" : 
+                            project.status === "funded" ? "secondary" : "outline"
+                          }
+                        >
+                          {project.status}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span>{Math.round(project.progress)}%</span>
+                        </div>
+                        <Progress value={project.progress} />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{formatCurrency(project.raisedAmount)}</span>
+                          <span>{formatCurrency(project.targetAmount)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" asChild className="w-full bg-transparent">
+                    <Link href="/admin/projects">Manage All Projects</Link>
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -159,22 +223,35 @@ export default function AdminHomePage() {
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div className="mt-1">
-                    {activity.status === "success" && <CheckCircle className="h-4 w-4 text-green-600" />}
-                    {activity.status === "info" && <TrendingUp className="h-4 w-4 text-blue-600" />}
-                    {activity.status === "warning" && <AlertTriangle className="h-4 w-4 text-yellow-600" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading activity...</span>
                 </div>
-              ))}
-              <Button variant="outline" asChild className="w-full bg-transparent">
-                <Link href="/admin/analytics">View Analytics</Link>
-              </Button>
+              ) : recentActivity.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No recent activity.</p>
+                </div>
+              ) : (
+                <>
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-start space-x-3">
+                      <div className="mt-1">
+                        {activity.status === "success" && <CheckCircle className="h-4 w-4 text-green-600" />}
+                        {activity.status === "info" && <TrendingUp className="h-4 w-4 text-blue-600" />}
+                        {activity.status === "warning" && <AlertTriangle className="h-4 w-4 text-yellow-600" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground">{activity.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" asChild className="w-full bg-transparent">
+                    <Link href="/admin/analytics">View Analytics</Link>
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

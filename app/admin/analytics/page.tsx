@@ -1,45 +1,87 @@
+
+'use client'
+import { useState, useEffect } from 'react'
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, TrendingDown, DollarSign, Users, Building2, BarChart3, PieChart, Activity } from "lucide-react"
+import { TrendingUp, TrendingDown, DollarSign, Users, Building2, BarChart3, PieChart, Activity, Loader2 } from "lucide-react"
 import { formatCurrency } from "@/lib/mockData"
 
-export default function AdminAnalyticsPage() {
-  // Mock analytics data
-  const platformStats = {
-    totalRevenue: 2500000000, // PKR 250 Crore
-    monthlyGrowth: 15.2,
-    totalInvestors: 1250,
-    investorGrowth: 8.5,
-    totalProjects: 12,
-    projectGrowth: 25.0,
-    avgInvestment: 5600000, // PKR 56 Lakh
-    investmentGrowth: -2.1,
+
+interface DashboardStats {
+  totalProjects: number
+  activeProjects: number
+  completedProjects: number
+  upcomingProjects: number
+  totalRaised: number
+  totalTarget: number
+  totalInvestors: number
+  activeInvestors: number
+  pendingApprovals: number
+}
+
+interface RecentProject {
+  _id: string
+  title: string
+  location: {
+    city?: string
+    area?: string
   }
+  status: string
+  raisedAmount: number
+  targetAmount: number
+  progress: number
+}
 
-  const cityData = [
-    { city: "Karachi", projects: 5, investment: 1200000000, percentage: 48 },
-    { city: "Lahore", projects: 3, investment: 750000000, percentage: 30 },
-    { city: "Islamabad", projects: 2, investment: 400000000, percentage: 16 },
-    { city: "Rawalpindi", projects: 2, investment: 150000000, percentage: 6 },
-  ]
+interface ActivityItem {
+  id: string
+  type: string
+  message: string
+  time: string
+  status: string
+}
 
-  const projectTypeData = [
-    { type: "Residential", count: 7, investment: 1500000000, percentage: 60 },
-    { type: "Commercial", count: 4, investment: 800000000, percentage: 32 },
-    { type: "Mixed Use", count: 1, investment: 200000000, percentage: 8 },
-  ]
+export default function AdminAnalyticsPage() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalProjects: 0,
+    activeProjects: 0,
+    completedProjects: 0,
+    upcomingProjects: 0,
+    totalRaised: 0,
+    totalTarget: 0,
+    totalInvestors: 0,
+    activeInvestors: 0,
+    pendingApprovals: 0
+  })
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const monthlyData = [
-    { month: "Jan", investments: 180000000, investors: 45 },
-    { month: "Feb", investments: 220000000, investors: 52 },
-    { month: "Mar", investments: 280000000, investors: 68 },
-    { month: "Apr", investments: 320000000, investors: 75 },
-    { month: "May", investments: 380000000, investors: 89 },
-    { month: "Jun", investments: 450000000, investors: 102 },
-  ]
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/dashboard')
+      const data = await response.json()
+
+      if (data.success) {
+        setStats(data.data.stats)
+        setRecentProjects(data.data.recentProjects)
+        setRecentActivity(data.data.recentActivity)
+      } else {
+        console.error('Failed to fetch dashboard data:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <RoleGuard requiredRole="admin">
@@ -58,9 +100,12 @@ export default function AdminAnalyticsPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(platformStats.totalRevenue)}</div>
+              <div className="text-2xl font-bold">
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(stats.totalRaised)}
+              </div>
               <p className="text-xs text-green-600 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />+{platformStats.monthlyGrowth}% from last month
+                <TrendingUp className="h-3 w-3 mr-1" />
+                {stats.totalTarget > 0 ? ((stats.totalRaised / stats.totalTarget) * 100).toFixed(1) : 0}% of target
               </p>
             </CardContent>
           </Card>
@@ -71,9 +116,11 @@ export default function AdminAnalyticsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{platformStats.totalInvestors.toLocaleString()}</div>
+              <div className="text-2xl font-bold">
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.totalInvestors.toLocaleString()}
+              </div>
               <p className="text-xs text-green-600 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />+{platformStats.investorGrowth}% from last month
+                <TrendingUp className="h-3 w-3 mr-1" />{stats.activeInvestors} active investors
               </p>
             </CardContent>
           </Card>
@@ -84,23 +131,26 @@ export default function AdminAnalyticsPage() {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{platformStats.totalProjects}</div>
+              <div className="text-2xl font-bold">
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.activeProjects}
+              </div>
               <p className="text-xs text-green-600 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />+{platformStats.projectGrowth}% from last month
+                <TrendingUp className="h-3 w-3 mr-1" />{stats.totalProjects} total projects
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Investment</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(platformStats.avgInvestment)}</div>
-              <p className="text-xs text-red-600 flex items-center">
-                <TrendingDown className="h-3 w-3 mr-1" />
-                {platformStats.investmentGrowth}% from last month
+              <div className="text-2xl font-bold">
+                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.pendingApprovals}
+              </div>
+              <p className="text-xs text-yellow-600 flex items-center">
+                <TrendingUp className="h-3 w-3 mr-1" />Awaiting verification
               </p>
             </CardContent>
           </Card>
@@ -121,22 +171,35 @@ export default function AdminAnalyticsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Activity className="h-5 w-5 mr-2" />
-                    Monthly Performance
+                    Recent Projects Performance
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {monthlyData.map((data, index) => (
-                      <div key={data.month} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>{data.month}</span>
-                          <span className="font-medium">{formatCurrency(data.investments)}</span>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading projects...</span>
+                    </div>
+                  ) : recentProjects.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No projects found.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {recentProjects.map((project) => (
+                        <div key={project._id} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>{project.title}</span>
+                            <span className="font-medium">{formatCurrency(project.raisedAmount)}</span>
+                          </div>
+                          <Progress value={project.progress} />
+                          <div className="text-xs text-muted-foreground">
+                            {project.location?.city || 'Unknown'} • {Math.round(project.progress)}% funded
+                          </div>
                         </div>
-                        <Progress value={(data.investments / 450000000) * 100} />
-                        <div className="text-xs text-muted-foreground">{data.investors} new investors</div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -144,25 +207,60 @@ export default function AdminAnalyticsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <PieChart className="h-5 w-5 mr-2" />
-                    Investment Distribution
+                    Project Status Distribution
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {projectTypeData.map((data) => (
-                      <div key={data.type} className="space-y-2">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading distribution...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="font-medium">{data.type}</span>
-                          <span className="text-sm text-muted-foreground">{data.percentage}%</span>
+                          <span className="font-medium">Active Projects</span>
+                          <span className="text-sm text-muted-foreground">
+                            {stats.totalProjects > 0 ? Math.round((stats.activeProjects / stats.totalProjects) * 100) : 0}%
+                          </span>
                         </div>
-                        <Progress value={data.percentage} />
+                        <Progress value={stats.totalProjects > 0 ? (stats.activeProjects / stats.totalProjects) * 100 : 0} />
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{data.count} projects</span>
-                          <span>{formatCurrency(data.investment)}</span>
+                          <span>{stats.activeProjects} projects</span>
+                          <span>{formatCurrency(stats.totalRaised)}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Completed Projects</span>
+                          <span className="text-sm text-muted-foreground">
+                            {stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0}%
+                          </span>
+                        </div>
+                        <Progress value={stats.totalProjects > 0 ? (stats.completedProjects / stats.totalProjects) * 100 : 0} />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{stats.completedProjects} projects</span>
+                          <span>Target reached</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Upcoming Projects</span>
+                          <span className="text-sm text-muted-foreground">
+                            {stats.totalProjects > 0 ? Math.round((stats.upcomingProjects / stats.totalProjects) * 100) : 0}%
+                          </span>
+                        </div>
+                        <Progress value={stats.totalProjects > 0 ? (stats.upcomingProjects / stats.totalProjects) * 100 : 0} />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{stats.upcomingProjects} projects</span>
+                          <span>In pipeline</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -171,26 +269,37 @@ export default function AdminAnalyticsPage() {
           <TabsContent value="geography">
             <Card>
               <CardHeader>
-                <CardTitle>Investment by City</CardTitle>
+                <CardTitle>Projects by Location</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {cityData.map((city) => (
-                    <div key={city.city} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">{city.city}</h4>
-                          <p className="text-sm text-muted-foreground">{city.projects} active projects</p>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="ml-2">Loading locations...</span>
+                  </div>
+                ) : recentProjects.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No location data available.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {recentProjects.map((project) => (
+                      <div key={project._id} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{project.location?.city || 'Unknown City'}</h4>
+                            <p className="text-sm text-muted-foreground">{project.title}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold">{formatCurrency(project.raisedAmount)}</div>
+                            <div className="text-sm text-muted-foreground">{Math.round(project.progress)}% funded</div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-semibold">{formatCurrency(city.investment)}</div>
-                          <div className="text-sm text-muted-foreground">{city.percentage}% of total</div>
-                        </div>
+                        <Progress value={project.progress} />
                       </div>
-                      <Progress value={city.percentage} />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -198,23 +307,56 @@ export default function AdminAnalyticsPage() {
           <TabsContent value="projects">
             <Card>
               <CardHeader>
-                <CardTitle>Project Type Analysis</CardTitle>
+                <CardTitle>Project Status Analysis</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {projectTypeData.map((type) => (
-                    <Card key={type.type}>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="ml-2">Loading project analysis...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
                       <CardContent className="p-6">
                         <div className="text-center space-y-2">
-                          <div className="text-2xl font-bold">{type.count}</div>
-                          <div className="text-sm text-muted-foreground">{type.type} Projects</div>
-                          <div className="text-lg font-semibold text-green-600">{formatCurrency(type.investment)}</div>
-                          <Badge variant="outline">{type.percentage}% of portfolio</Badge>
+                          <div className="text-2xl font-bold">{stats.activeProjects}</div>
+                          <div className="text-sm text-muted-foreground">Active Projects</div>
+                          <div className="text-lg font-semibold text-green-600">{formatCurrency(stats.totalRaised)}</div>
+                          <Badge variant="outline">
+                            {stats.totalProjects > 0 ? Math.round((stats.activeProjects / stats.totalProjects) * 100) : 0}% of portfolio
+                          </Badge>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="text-center space-y-2">
+                          <div className="text-2xl font-bold">{stats.completedProjects}</div>
+                          <div className="text-sm text-muted-foreground">Completed Projects</div>
+                          <div className="text-lg font-semibold text-blue-600">Successfully Funded</div>
+                          <Badge variant="outline">
+                            {stats.totalProjects > 0 ? Math.round((stats.completedProjects / stats.totalProjects) * 100) : 0}% success rate
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="text-center space-y-2">
+                          <div className="text-2xl font-bold">{stats.upcomingProjects}</div>
+                          <div className="text-sm text-muted-foreground">Upcoming Projects</div>
+                          <div className="text-lg font-semibold text-purple-600">In Pipeline</div>
+                          <Badge variant="outline">
+                            {stats.totalProjects > 0 ? Math.round((stats.upcomingProjects / stats.totalProjects) * 100) : 0}% pipeline
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -222,48 +364,75 @@ export default function AdminAnalyticsPage() {
           <TabsContent value="trends">
             <Card>
               <CardHeader>
-                <CardTitle>Market Trends</CardTitle>
+                <CardTitle>Platform Insights</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Top Performing Sectors</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span>Commercial Real Estate</span>
-                          <Badge variant="default">+28% ROI</Badge>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span>Residential Complexes</span>
-                          <Badge variant="secondary">+22% ROI</Badge>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span>Mixed Use Developments</span>
-                          <Badge variant="outline">+18% ROI</Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Investment Patterns</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span>Average Investment Size</span>
-                          <span className="font-medium">{formatCurrency(5600000)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Most Popular Duration</span>
-                          <span className="font-medium">24 months</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Preferred Risk Level</span>
-                          <span className="font-medium">Moderate</span>
-                        </div>
-                      </div>
-                    </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="ml-2">Loading insights...</span>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Platform Performance</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span>Total Funding Raised</span>
+                            <Badge variant="default">{formatCurrency(stats.totalRaised)}</Badge>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Active Investors</span>
+                            <Badge variant="secondary">{stats.activeInvestors} users</Badge>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span>Funding Success Rate</span>
+                            <Badge variant="outline">
+                              {stats.totalTarget > 0 ? ((stats.totalRaised / stats.totalTarget) * 100).toFixed(1) : 0}%
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Current Status</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Average Project Progress</span>
+                            <span className="font-medium">
+                              {recentProjects.length > 0 
+                                ? Math.round(recentProjects.reduce((sum, p) => sum + p.progress, 0) / recentProjects.length)
+                                : 0}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Pending Verifications</span>
+                            <span className="font-medium">{stats.pendingApprovals} users</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Project Portfolio</span>
+                            <span className="font-medium">{stats.totalProjects} projects</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {recentActivity.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="font-medium mb-4">Recent Activity Summary</h4>
+                        <div className="space-y-2">
+                          {recentActivity.slice(0, 3).map((activity) => (
+                            <div key={activity.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                              <span className="text-sm">{activity.message}</span>
+                              <span className="text-xs text-muted-foreground">{activity.time}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

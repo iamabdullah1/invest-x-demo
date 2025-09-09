@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
+import { ImageCarousel } from "@/components/image-carousel"
 
 interface Project {
   _id: string
@@ -250,6 +251,20 @@ export default function ProjectDetailPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Project Images Carousel */}
+          {project.images && project.images.length > 0 && (
+            <div className="w-full">
+              <ImageCarousel
+                images={project.images}
+                alt={project.title}
+                className="w-full h-96"
+                aspectRatio="video"
+                showDots={true}
+                showArrows={true}
+              />
+            </div>
+          )}
+
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant={project.status === "active" ? "default" : "secondary"}>{project.status}</Badge>

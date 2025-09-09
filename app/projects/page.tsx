@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, MapPin, DollarSign, Calendar, Users } from "lucide-react"
 import Link from "next/link"
+import { ImageCarousel } from "@/components/image-carousel"
 
 interface Project {
   _id: string
@@ -45,22 +46,15 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
-      console.log('Fetching projects from /api/projects...');
       const response = await fetch('/api/projects')
-      console.log('Response status:', response.status);
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Full API response:', data);
-        console.log('Projects data received:', data.projects);
-        console.log('Projects array length:', data.projects?.length);
         
         // Make sure we're setting the projects correctly
         if (data.success && data.projects) {
           setProjects(data.projects)
-          console.log('Projects set successfully:', data.projects.length, 'projects');
         } else {
-          console.warn('API response format issue:', data);
           setProjects([])
         }
       } else {
@@ -177,39 +171,6 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      {/* Debug Information */}
-      <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
-        <p><strong>Debug Info:</strong></p>
-        <p>Total projects: {projects.length}</p>
-        <p>Filtered projects: {filteredProjects.length}</p>
-        <p>Search term: "{searchTerm}"</p>
-        <p>Selected filter: {selectedFilter}</p>
-        <p>Loading: {loading ? 'true' : 'false'}</p>
-        <Button 
-          onClick={async () => {
-            try {
-              console.log('Seeding database...');
-              const response = await fetch('/api/test/db-projects', { method: 'POST' });
-              const result = await response.json();
-              console.log('Seed result:', result);
-              if (result.success) {
-                alert(`Database seeded! Found ${result.totalProjectsAfterSeed} projects. Refreshing...`);
-                await fetchProjects(); // Refresh projects
-              } else {
-                alert('Seeding failed: ' + (result.error || 'Unknown error'));
-              }
-            } catch (error) {
-              console.error('Seed error:', error);
-              alert('Seed error: ' + error);
-            }
-          }}
-          className="ml-4"
-          size="sm"
-        >
-          Seed DB
-        </Button>
-      </div>
-
       {/* Projects Grid */}
       {filteredProjects.length === 0 ? (
         <div className="text-center py-12">
@@ -217,16 +178,6 @@ export default function ProjectsPage() {
             {searchTerm || selectedFilter !== 'all' 
               ? 'No projects match your current filters.' 
               : 'No projects available at the moment.'}
-          </div>
-          <div className="text-xs text-gray-400 mb-4 max-w-lg mx-auto">
-            <strong>Debug:</strong> 
-            <pre className="text-left bg-gray-50 p-2 rounded mt-2 overflow-auto max-h-40">
-              {JSON.stringify({ 
-                totalProjects: projects.length, 
-                firstProject: projects[0] || 'No projects',
-                filters: { searchTerm, selectedFilter }
-              }, null, 2)}
-            </pre>
           </div>
           {(searchTerm || selectedFilter !== 'all') && (
             <Button
@@ -248,13 +199,14 @@ export default function ProjectsPage() {
             return (
               <Card key={project._id} className="hover:shadow-lg transition-shadow duration-200">
                 {project.images && project.images.length > 0 && (
-                  <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                    <img
-                      src={project.images[0]}
-                      alt={project.title}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
-                    />
-                  </div>
+                  <ImageCarousel
+                    images={project.images}
+                    alt={project.title}
+                    className="w-full h-64"
+                    aspectRatio="video"
+                    showDots={true}
+                    showArrows={true}
+                  />
                 )}
                 
                 <CardHeader className="space-y-2">
