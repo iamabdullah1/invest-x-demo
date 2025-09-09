@@ -170,7 +170,7 @@ export default function ProjectDetailPage() {
 
   const handleAddToCart = async () => {
     if (investmentValue < project.minInvestment) {
-      alert(`Minimum investment is ${formatCurrency(project.minInvestment)}`)
+      alert(`Minimum investment is ${formatPKR(project.minInvestment)}`)
       return
     }
 
@@ -466,20 +466,20 @@ export default function ProjectDetailPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span>Target Amount:</span>
-                    <span className="font-medium">{formatCurrency(project.targetAmount)}</span>
+                    <span className="font-medium">{formatPKR(project.targetAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Amount Raised:</span>
-                    <span className="font-medium">{formatCurrency(project.raisedAmount)}</span>
+                    <span className="font-medium">{formatPKR(project.raisedAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Remaining:</span>
-                    <span className="font-medium">{formatCurrency(remainingAmount)}</span>
+                    <span className="font-medium">{formatPKR(remainingAmount)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between">
                     <span>Min Investment:</span>
-                    <span className="font-medium">{formatCurrency(project.minInvestment)}</span>
+                    <span className="font-medium">{formatPKR(project.minInvestment)}</span>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -489,7 +489,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Price per sq ft:</span>
-                    <span className="font-medium">{formatCurrency(project.pricePerSqFt)}</span>
+                    <span className="font-medium">{formatPKR(project.pricePerSqFt)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expected Returns:</span>
