@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, DollarSign, Calendar, Users } from "lucide-react"
+import { Search, MapPin, DollarSign } from "lucide-react"
 import Link from "next/link"
 import { ImageCarousel } from "@/components/image-carousel"
 
@@ -13,7 +13,7 @@ interface Project {
   _id: string
   title: string
   description?: string
-  location?: any // Make this flexible for now
+  location?: any
   city?: string
   area?: string
   targetAmount?: number
@@ -25,26 +25,144 @@ interface Project {
   images?: string[]
   createdAt?: string
   updatedAt?: string
-  // Add any other fields that might exist
   [key: string]: any
 }
 
+// Memoized Project Card Component
+const ProjectCard = memo(({ project }: { project: Project }) => {
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR'
+    }).format(amount)
+  }, [])
+
+  const getStatusColor = useCallback((status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500'
+      case 'completed': return 'bg-blue-500'
+      case 'upcoming': return 'bg-yellow-500'
+      case 'funded': return 'bg-purple-500'
+      default: return 'bg-gray-500'
+    }
+  }, [])
+
+  const getProjectImage = useCallback((project: Project) => {
+    // If project has images, use the first one
+    if (project.images && project.images.length > 0 && project.images[0]) {
+      return project.images[0]
+    }
+    
+    // Fallback images based on project type or location
+    const fallbackImages = [
+      '/modern-apartments-islamabad.png',
+      '/luxury-residential-karachi.png', 
+      '/commercial-plaza-lahore.png',
+      '/modern-residential-complex-karachi.png',
+      '/residential-development-rawalpindi.png',
+      '/lahore-gulberg-plaza.png'
+    ]
+    
+    // Use project ID or title to consistently select the same fallback image
+    const seed = project._id || project.title || ''
+    const index = seed.length % fallbackImages.length
+    return fallbackImages[index]
+  }, [])
+
+  return (
+    <Card className="h-full overflow-hidden">
+      {/* Project Image */}
+      <div className="relative h-48 w-full bg-gray-100">
+        <Image
+          src={getProjectImage(project)}
+          alt={project.title || 'Project Image'}
+          fill
+          className="object-cover transition-transform hover:scale-105"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+          onError={(e) => {
+            // If image fails to load, show placeholder
+            const target = e.currentTarget
+            target.src = '/placeholder.jpg'
+          }}
+        />
+      </div>
+
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-lg font-semibold line-clamp-2">{project.title}</h3>
+          <Badge className={getStatusColor(project.status)}>
+            {project.status}
+          </Badge>
+        </div>
+        
+        {project.description && (
+          <p className="text-muted-foreground mb-4 line-clamp-2">
+            {project.description}
+          </p>
+        )}
+
+        <div className="space-y-2 mb-4">
+          {project.location && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 mr-2" />
+              {typeof project.location === 'string' ? project.location : `${project.city || ''}, ${project.area || ''}`}
+            </div>
+          )}
+          
+          {project.targetAmount && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Target: {formatCurrency(project.targetAmount)}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-between items-center">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/projects/${project._id}`}>
+              View Details
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+})
+
+ProjectCard.displayName = 'ProjectCard'
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchProjects()
-  }, [])
+  // Memoized filtered projects
+  const filteredProjects = useMemo(() => {
+    let filtered = projects
 
-  useEffect(() => {
-    filterProjects()
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase()
+      filtered = filtered.filter(project =>
+        project.title?.toLowerCase().includes(search) ||
+        project.description?.toLowerCase().includes(search) ||
+        project.city?.toLowerCase().includes(search) ||
+        project.area?.toLowerCase().includes(search)
+      )
+    }
+
+    // Apply status filter
+    if (selectedFilter !== 'all') {
+      filtered = filtered.filter(project => project.status === selectedFilter)
+    }
+
+    return filtered
   }, [projects, searchTerm, selectedFilter])
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       const response = await fetch('/api/projects')
       
@@ -65,67 +183,24 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const filterProjects = () => {
-    let filtered = projects
+  useEffect(() => {
+    fetchProjects()
+  }, [fetchProjects])
 
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(project =>
-        project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.location.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.location.area.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.description.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
+  const handleSearch = useCallback((value: string) => {
+    setSearchTerm(value)
+  }, [])
 
-    // Filter by status
-    if (selectedFilter !== 'all') {
-      filtered = filtered.filter(project => project.status === selectedFilter)
-    }
-
-    setFilteredProjects(filtered)
-  }
-
-  const getRiskBadgeColor = (risk: string) => {
-    switch (risk) {
-      case 'Low': return 'bg-green-100 text-green-800 border-green-200'
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'High': return 'bg-red-100 text-red-800 border-red-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
-      case 'upcoming': return 'bg-purple-100 text-purple-800 border-purple-200'
-      case 'funded': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
-
-  const calculateProgress = (raised: number, target: number) => {
-    return Math.min((raised / target) * 100, 100)
-  }
+  const handleFilterChange = useCallback((value: string) => {
+    setSelectedFilter(value)
+  }, [])
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading projects...</div>
-        </div>
+      <div className="container mx-auto p-6">
+        <div className="text-center">Loading projects...</div>
       </div>
     )
   }
@@ -172,9 +247,15 @@ export default function ProjectsPage() {
       </div>
 
       {/* Projects Grid */}
-      {filteredProjects.length === 0 ? (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredProjects.map((project) => (
+          <ProjectCard key={project._id} project={project} />
+        ))}
+      </div>
+
+      {filteredProjects.length === 0 && (
         <div className="text-center py-12">
-          <div className="text-gray-500 mb-4">
+          <p className="text-muted-foreground">
             {searchTerm || selectedFilter !== 'all' 
               ? 'No projects match your current filters.' 
               : 'No projects available at the moment.'}
