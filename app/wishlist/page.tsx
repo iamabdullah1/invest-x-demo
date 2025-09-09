@@ -39,7 +39,7 @@ export default function WishlistPage() {
 
   if (wishlistItems.length === 0) {
     return (
-      <RoleGuard allowedRoles={["investor"]}>
+      <RoleGuard requiredRole="investor">
         <div className="container mx-auto p-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold">My Wishlist</h1>
@@ -62,7 +62,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <RoleGuard allowedRoles={["investor"]}>
+    <RoleGuard requiredRole="investor">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>

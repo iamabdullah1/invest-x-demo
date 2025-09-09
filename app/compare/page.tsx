@@ -40,7 +40,7 @@ export default function ComparePage() {
   }
 
   return (
-    <RoleGuard allowedRoles={["investor"]}>
+    <RoleGuard requiredRole="investor">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex items-center gap-4">
           <Link href="/projects">
