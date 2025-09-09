@@ -56,12 +56,6 @@ export default function AdminHomePage() {
             <p className="text-muted-foreground">Manage your real estate investment platform</p>
           </div>
           <div className="flex space-x-2">
-            <Button asChild variant="outline">
-              <Link href="/test-seed">
-                <Users className="h-4 w-4 mr-2" />
-                Seed Database
-              </Link>
-            </Button>
             <Button asChild>
               <Link href="/admin/projects/new">
                 <Plus className="h-4 w-4 mr-2" />
