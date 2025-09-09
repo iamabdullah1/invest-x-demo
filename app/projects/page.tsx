@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, MapPin, DollarSign } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
+import { ImageCarousel } from "@/components/image-carousel"
 
 interface Project {
   _id: string
@@ -166,14 +166,18 @@ export default function ProjectsPage() {
     try {
       const response = await fetch('/api/projects')
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Make sure we're setting the projects correctly
+        if (data.success && data.projects) {
+          setProjects(data.projects)
+        } else {
+          setProjects([])
+        }
+      } else {
+        console.error('Failed to fetch projects:', response.status, response.statusText);
       }
-      
-      const data = await response.json()
-      console.log('Fetched projects data:', data)
-      console.log('First project images:', data.projects?.[0]?.images)
-      setProjects(data.projects || [])
     } catch (error) {
       console.error('Error fetching projects:', error)
     } finally {
@@ -202,39 +206,44 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Investment Projects</h1>
-          <p className="text-muted-foreground">
-            Discover profitable real estate investment opportunities
-          </p>
-        </div>
-      </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-4">Investment Projects</h1>
+        <p className="text-gray-600 mb-6">
+          Discover exciting investment opportunities across various sectors and locations.
+        </p>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search projects by title, location, or description..."
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Search projects by title, location, or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          {/* Simple filter options for investors */}
+          <div className="flex gap-2">
+            <Button
+              variant={selectedFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('all')}
+              size="sm"
+            >
+              All Projects
+            </Button>
+            <Button
+              variant={selectedFilter === 'active' ? 'default' : 'outline'}
+              onClick={() => setSelectedFilter('active')}
+              size="sm"
+            >
+              Available Now
+            </Button>
+          </div>
         </div>
-        
-        <select
-          value={selectedFilter}
-          onChange={(e) => handleFilterChange(e.target.value)}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="completed">Completed</option>
-          <option value="funded">Funded</option>
-        </select>
       </div>
 
       {/* Projects Grid */}
@@ -248,10 +257,118 @@ export default function ProjectsPage() {
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             {searchTerm || selectedFilter !== 'all' 
-              ? 'No projects match your search criteria.' 
-              : 'No projects available at the moment.'
-            }
-          </p>
+              ? 'No projects match your current filters.' 
+              : 'No projects available at the moment.'}
+          </div>
+          {(searchTerm || selectedFilter !== 'all') && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('')
+                setSelectedFilter('all')
+              }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => {
+            const progress = calculateProgress(project.raisedAmount || 0, project.targetAmount || 1)
+            
+            return (
+              <Card key={project._id} className="hover:shadow-lg transition-shadow duration-200">
+                {project.images && project.images.length > 0 && (
+                  <ImageCarousel
+                    images={project.images}
+                    alt={project.title}
+                    className="w-full h-64"
+                    aspectRatio="video"
+                    showDots={true}
+                    showArrows={true}
+                  />
+                )}
+                
+                <CardHeader className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
+                    <Badge className={getStatusBadgeColor(project.status)}>
+                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      <span>{project.location.area}, {project.location.city}</span>
+                    </div>
+                    <Badge className={getRiskBadgeColor(project.riskLevel || 'Medium')}>
+                      {project.riskLevel || 'Medium'} Risk
+                    </Badge>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600 text-sm line-clamp-3">
+                    {project.description}
+                  </p>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Progress</span>
+                      <span className="font-medium">{progress.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">
+                        Raised: {formatCurrency(project.raisedAmount || 0)}
+                      </span>
+                      <span className="font-medium">
+                        Target: {formatCurrency(project.targetAmount || 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Key Details */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <div>
+                        <div className="text-gray-600">Expected Return</div>
+                        <div className="font-medium">{project.expectedReturn}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <div>
+                        <div className="text-gray-600">Duration</div>
+                        <div className="font-medium">{project.duration}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <Link href={`/projects/${project._id}`}>
+                    <Button 
+                      className="w-full mt-4" 
+                      disabled={project.status !== 'active'}
+                    >
+                      {project.status === 'active' ? 'View Details' : 
+                       project.status === 'completed' ? 'View Details' : 
+                       'Coming Soon'}
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
