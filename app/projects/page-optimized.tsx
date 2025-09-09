@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, MapPin, DollarSign } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 
 interface Project {
   _id: string
@@ -47,48 +46,8 @@ const ProjectCard = memo(({ project }: { project: Project }) => {
     }
   }, [])
 
-  const getProjectImage = useCallback((project: Project) => {
-    // If project has images, use the first one
-    if (project.images && project.images.length > 0 && project.images[0]) {
-      return project.images[0]
-    }
-    
-    // Fallback images based on project type or location
-    const fallbackImages = [
-      '/modern-apartments-islamabad.png',
-      '/luxury-residential-karachi.png', 
-      '/commercial-plaza-lahore.png',
-      '/modern-residential-complex-karachi.png',
-      '/residential-development-rawalpindi.png',
-      '/lahore-gulberg-plaza.png'
-    ]
-    
-    // Use project ID or title to consistently select the same fallback image
-    const seed = project._id || project.title || ''
-    const index = seed.length % fallbackImages.length
-    return fallbackImages[index]
-  }, [])
-
   return (
-    <Card className="h-full overflow-hidden">
-      {/* Project Image */}
-      <div className="relative h-48 w-full bg-gray-100">
-        <Image
-          src={getProjectImage(project)}
-          alt={project.title || 'Project Image'}
-          fill
-          className="object-cover transition-transform hover:scale-105"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          placeholder="blur"
-          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-          onError={(e) => {
-            // If image fails to load, show placeholder
-            const target = e.currentTarget
-            target.src = '/placeholder.jpg'
-          }}
-        />
-      </div>
-
+    <Card className="h-full">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
           <h3 className="text-lg font-semibold line-clamp-2">{project.title}</h3>
@@ -171,8 +130,6 @@ export default function ProjectsPage() {
       }
       
       const data = await response.json()
-      console.log('Fetched projects data:', data)
-      console.log('First project images:', data.projects?.[0]?.images)
       setProjects(data.projects || [])
     } catch (error) {
       console.error('Error fetching projects:', error)
