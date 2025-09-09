@@ -82,9 +82,6 @@ export default function OTPVerificationPage() {
             try {
               const userData = JSON.parse(signupData)
               
-              console.log(`🔍 OTP Verification - Signup Data:`, userData);
-              console.log(`📝 Role in signup data: ${userData.role}`);
-              
               // Call register API to create user
               const registerResponse = await fetch('/api/auth/register', {
                 method: 'POST',

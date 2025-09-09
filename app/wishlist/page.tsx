@@ -34,7 +34,7 @@ export default function WishlistPage() {
 
   const addToCart = (project: Project) => {
     // In a real app, this would add to cart state/API
-    console.log("Added to cart:", project.title)
+    // TODO: Implement cart functionality
   }
 
   if (wishlistItems.length === 0) {

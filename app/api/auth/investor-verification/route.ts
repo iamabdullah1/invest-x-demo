@@ -11,7 +11,6 @@ export async function POST(request: NextRequest) {
     const user = await JWTAuthService.getAuthenticatedUser(request);
     
     if (!user) {
-      console.log('❌ Authentication failed - no user found');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -86,8 +85,6 @@ export async function POST(request: NextRequest) {
 
     // Generate unique verification ID
     const verificationId = uuidv4();
-    
-    console.log(`📤 Starting Cloudinary upload for verification: ${verificationId}`);
 
     // Convert files to buffers
     const frontIdBytes = await frontIdCard.arrayBuffer();
@@ -104,16 +101,11 @@ export async function POST(request: NextRequest) {
     );
 
     if (!uploadResult.success) {
-      console.error('Cloudinary upload failed:', uploadResult.error);
       return NextResponse.json(
         { error: 'Failed to upload verification documents. Please try again.' },
         { status: 500 }
       );
     }
-
-    console.log(`✅ Cloudinary upload successful for verification: ${verificationId}`);
-
-    // Update user with verification data
     const verificationData = {
       verificationId,
       address,
@@ -148,22 +140,14 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      console.log(`💾 User verification data updated for user: ${user._id}`);
+      }
+    } catch (dbError) {
     } catch (dbError: any) {
-      console.error('❌ Database update error:', dbError);
       return NextResponse.json(
         { error: 'Failed to update user verification data' },
         { status: 500 }
       );
     }
-
-    console.log('✅ Investor verification submitted successfully:', {
-      verificationId,
-      userId: user._id,
-      email: user.email,
-      frontIdUrl: uploadResult.frontId?.url,
-      backIdUrl: uploadResult.backId?.url,
-    });
 
     // Send success response
     return NextResponse.json({

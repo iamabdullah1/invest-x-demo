@@ -20,21 +20,11 @@ export function AppHeader() {
   const { user, logout, isAuthenticated, loading } = useAuth()
   const { theme, setTheme } = useTheme()
 
-  // Log role information whenever user state changes
-  console.log('🎨 Header render - User state:', {
-    isAuthenticated,
-    loading,
-    userRole: user?.role,
-    userName: user ? `${user.firstName} ${user.lastName}` : 'Not logged in'
-  });
-
   const handleLogout = async () => {
     try {
-      console.log('🚪 Logging out user:', user?.email);
       await logout()
-      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('❌ Logout failed:', error)
+      // Handle logout error silently or with toast notification
     }
   }
 
