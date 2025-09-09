@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
 
 interface Project {
@@ -93,8 +94,12 @@ export default function ProjectDetailPage() {
         const data = await response.json()
         const projectData = data.projects[0]
         if (projectData) {
+          console.log('Project data received:', projectData)
+          console.log('Project images:', projectData.images)
           setProject(projectData)
         }
+      } else {
+        console.error('Failed to fetch project:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching project:', error)
@@ -171,46 +176,42 @@ export default function ProjectDetailPage() {
   const investmentValue = Number.parseFloat(investmentAmount) || 0
   const projectedReturns = investmentValue * (project.expectedReturn / 100)
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (investmentValue < project.minInvestment) {
       alert(`Minimum investment is ${formatCurrency(project.minInvestment)}`)
       return
     }
 
-    // Create cart item
-    const cartItem = {
-      projectId: project._id,
-      projectTitle: project.title,
-      amount: investmentValue,
-      projectImage: project.images && project.images.length > 0 ? project.images[0] : "/placeholder.svg",
-      expectedReturn: project.expectedReturn,
-      location: `${project.location?.area || ''}, ${project.location?.city || ''}`,
-      addedAt: new Date().toISOString()
+    try {
+      setInvesting(true)
+      const response = await fetch('/api/user/cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: project._id,
+          amount: investmentValue
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          alert('Project added to cart successfully!')
+          router.push('/cart')
+        } else {
+          alert(data.message || 'Failed to add to cart')
+        }
+      } else {
+        alert('Failed to add to cart')
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      alert('Failed to add to cart')
+    } finally {
+      setInvesting(false)
     }
-
-    // Get existing cart from localStorage
-    const existingCart = localStorage.getItem('investmentCart')
-    let cartItems = existingCart ? JSON.parse(existingCart) : []
-
-    // Check if item already exists in cart
-    const existingItemIndex = cartItems.findIndex((item: any) => item.projectId === project._id)
-    
-    if (existingItemIndex >= 0) {
-      // Update existing item
-      cartItems[existingItemIndex].amount = investmentValue
-      cartItems[existingItemIndex].addedAt = new Date().toISOString()
-      alert('Investment amount updated in cart!')
-    } else {
-      // Add new item
-      cartItems.push(cartItem)
-      alert('Investment added to cart successfully!')
-    }
-
-    // Save to localStorage
-    localStorage.setItem('investmentCart', JSON.stringify(cartItems))
-
-    // Redirect to cart
-    router.push("/cart")
   }
 
   return (
@@ -227,151 +228,139 @@ export default function ProjectDetailPage() {
 
       <div className="space-y-8">
         {/* Hero Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            <div className="aspect-video bg-muted rounded-2xl overflow-hidden">
-              <img
-                src={project.images && project.images.length > 0 ? project.images[0] : "/placeholder.svg"}
-                alt={project.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            {(project.images || []).slice(1, 4).map((image, index) => (
-              <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <img
-                  src={image || "/placeholder.svg"}
-                  alt={`${project.title} ${index + 2}`}
-                  className="w-full h-full object-cover"
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="aspect-video bg-muted rounded-2xl overflow-hidden relative">
+              {project.images && project.images.length > 0 ? (
+                <ImageCarousel
+                  images={project.images}
+                  alt={project.title}
+                  className="w-full h-full"
+                  aspectRatio="video"
+                  showDots={true}
+                  showArrows={true}
                 />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* Project Images Carousel */}
-          {project.images && project.images.length > 0 && (
-            <div className="w-full">
-              <ImageCarousel
-                images={project.images}
-                alt={project.title}
-                className="w-full h-96"
-                aspectRatio="video"
-                showDots={true}
-                showArrows={true}
-              />
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant={project.status === "active" ? "default" : "secondary"}>{project.status}</Badge>
-              <Badge variant="outline">{project.type}</Badge>
-              <Badge
-                variant={
-                  project.riskLevel === "low" ? "default" : project.riskLevel === "medium" ? "secondary" : "destructive"
-                }
-              >
-                {project.riskLevel} risk
-              </Badge>
-            </div>
-            <h1 className="text-3xl font-bold">{project.title}</h1>
-            <p className="text-muted-foreground flex items-center mt-2">
-              <MapPin className="h-4 w-4 mr-1" />
-              {project.location?.area || 'N/A'}, {project.location?.city || 'N/A'}
-            </p>
-          </div>
-
-          {/* Key Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{project.expectedReturn}%</div>
-                <div className="text-sm text-muted-foreground">Expected Returns</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{project.duration}m</div>
-                <div className="text-sm text-muted-foreground">Investment Period</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{formatCurrency(project.minInvestment)}</div>
-                <div className="text-sm text-muted-foreground">Min. Investment</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{project.area.toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">Total Area (sq ft)</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Funding Progress */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="font-medium">Funding Progress</span>
-                  <span className="font-bold">{progress.toFixed(1)}%</span>
-                </div>
-                <Progress value={progress} className="h-3" />
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{formatCurrency(project.raisedAmount)} raised</span>
-                  <span>{formatCurrency(remainingAmount)} remaining</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Investment Calculator */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calculator className="h-5 w-5 mr-2" />
-                Investment Calculator
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="investment">Investment Amount (PKR)</Label>
-                <Input
-                  id="investment"
-                  type="number"
-                  placeholder={`Min. ${formatCurrency(project.minInvestment)}`}
-                  value={investmentAmount}
-                  onChange={(e) => setInvestmentAmount(e.target.value)}
+              ) : (
+                <Image
+                  src="/placeholder.jpg"
+                  alt={project.title}
+                  fill
+                  className="object-cover"
                 />
-              </div>
-              {investmentValue > 0 && (
-                <div className="space-y-2 p-4 bg-muted rounded-lg">
-                  <div className="flex justify-between">
-                    <span>Investment Share:</span>
-                    <span className="font-medium">{((investmentValue / project.targetAmount) * 100).toFixed(2)}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Projected Returns:</span>
-                    <span className="font-medium text-green-600">{formatCurrency(projectedReturns)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Value:</span>
-                    <span className="font-bold">{formatCurrency(investmentValue + projectedReturns)}</span>
-                  </div>
-                </div>
               )}
-              <Button onClick={handleAddToCart} className="w-full" disabled={investmentValue < project.minInvestment}>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Add to Cart
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant={project.status === "active" ? "default" : "secondary"}>{project.status}</Badge>
+                <Badge variant="outline">{project.type}</Badge>
+                <Badge
+                  variant={
+                    project.riskLevel === "low" ? "default" : project.riskLevel === "medium" ? "secondary" : "destructive"
+                  }
+                >
+                  {project.riskLevel} risk
+                </Badge>
+              </div>
+              <h1 className="text-3xl font-bold">{project.title}</h1>
+              <p className="text-muted-foreground flex items-center mt-2">
+                <MapPin className="h-4 w-4 mr-1" />
+                {project.location?.area || 'N/A'}, {project.location?.city || 'N/A'}
+              </p>
+            </div>
+
+            {/* Key Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">{project.expectedReturn}%</div>
+                  <div className="text-sm text-muted-foreground">Expected Returns</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{project.duration}m</div>
+                  <div className="text-sm text-muted-foreground">Investment Period</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{formatCurrency(project.minInvestment)}</div>
+                  <div className="text-sm text-muted-foreground">Min. Investment</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{project.area.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Total Area (sq ft)</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Right: Sidebar with Investment Calculator */}
+          <div className="space-y-6">
+            {/* Funding Progress */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Funding Progress</span>
+                    <span className="font-bold">{progress.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-3" />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{formatCurrency(project.raisedAmount)} raised</span>
+                    <span>{formatCurrency(remainingAmount)} remaining</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Investment Calculator */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calculator className="h-5 w-5 mr-2" />
+                  Investment Calculator
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="investment">Investment Amount (PKR)</Label>
+                  <Input
+                    id="investment"
+                    type="number"
+                    placeholder={`Min. ${formatCurrency(project.minInvestment)}`}
+                    value={investmentAmount}
+                    onChange={(e) => setInvestmentAmount(e.target.value)}
+                  />
+                </div>
+                {investmentValue > 0 && (
+                  <div className="space-y-2 p-4 bg-muted rounded-lg">
+                    <div className="flex justify-between">
+                      <span>Investment Share:</span>
+                      <span className="font-medium">{((investmentValue / project.targetAmount) * 100).toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Projected Returns:</span>
+                      <span className="font-medium text-green-600">{formatCurrency(projectedReturns)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Value:</span>
+                      <span className="font-bold">{formatCurrency(investmentValue + projectedReturns)}</span>
+                    </div>
+                  </div>
+                )}
+                <Button onClick={handleAddToCart} className="w-full" disabled={investmentValue < project.minInvestment}>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Add to Cart
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
 
       {/* Detailed Information */}
       <Tabs defaultValue="overview" className="space-y-6">
@@ -416,7 +405,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>
-                    <span className="font-medium">{project.location?.city || project.city}</span>
+                    <span className="font-medium">{project.location?.city || 'N/A'}</span>
                   </div>
                   {typeof project.developer === 'object' && project.developer && (
                     <>
@@ -593,6 +582,7 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
 }

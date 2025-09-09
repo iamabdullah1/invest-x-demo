@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, DollarSign } from "lucide-react"
+import { Search, MapPin, DollarSign, Calendar, Heart } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
 
 interface Project {
@@ -30,6 +31,29 @@ interface Project {
 
 // Memoized Project Card Component
 const ProjectCard = memo(({ project }: { project: Project }) => {
+  const [isInWishlist, setIsInWishlist] = useState(false)
+  const [wishlistLoading, setWishlistLoading] = useState(false)
+  
+  // Check if project is in wishlist on load
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      try {
+        const response = await fetch('/api/user/wishlist')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.wishlist) {
+            const isInList = data.wishlist.some((item: any) => item._id === project._id)
+            setIsInWishlist(isInList)
+          }
+        }
+      } catch (error) {
+        console.error('Error checking wishlist status:', error)
+      }
+    }
+    
+    checkWishlistStatus()
+  }, [project._id])
+  
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-PK', {
       style: 'currency',
@@ -69,24 +93,89 @@ const ProjectCard = memo(({ project }: { project: Project }) => {
     return fallbackImages[index]
   }, [])
 
+  const toggleWishlist = async () => {
+    try {
+      setWishlistLoading(true)
+      
+      if (isInWishlist) {
+        // Remove from wishlist
+        const response = await fetch(`/api/user/wishlist?projectId=${project._id}`, {
+          method: 'DELETE'
+        })
+        
+        if (response.ok) {
+          setIsInWishlist(false)
+        } else {
+          alert('Failed to remove from wishlist')
+        }
+      } else {
+        // Add to wishlist
+        const response = await fetch('/api/user/wishlist', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ projectId: project._id })
+        })
+        
+        if (response.ok) {
+          setIsInWishlist(true)
+        } else {
+          alert('Failed to add to wishlist')
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling wishlist:', error)
+      alert('Failed to update wishlist')
+    } finally {
+      setWishlistLoading(false)
+    }
+  }
+
   return (
     <Card className="h-full overflow-hidden">
-      {/* Project Image */}
+      {/* Project Image/Carousel */}
       <div className="relative h-48 w-full bg-gray-100">
-        <Image
-          src={getProjectImage(project)}
-          alt={project.title || 'Project Image'}
-          fill
-          className="object-cover transition-transform hover:scale-105"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          placeholder="blur"
-          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
-          onError={(e) => {
-            // If image fails to load, show placeholder
-            const target = e.currentTarget
-            target.src = '/placeholder.jpg'
-          }}
-        />
+        {project.images && project.images.length > 1 ? (
+          // Use ImageCarousel for multiple images
+          <ImageCarousel
+            images={project.images}
+            alt={project.title}
+            className="w-full h-48"
+            aspectRatio="video"
+            showDots={true}
+            showArrows={true}
+          />
+        ) : (
+          // Use single Image for one or no images
+          <Image
+            src={getProjectImage(project)}
+            alt={project.title || 'Project Image'}
+            fill
+            className="object-cover transition-transform hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+            onError={(e) => {
+              // If image fails to load, show placeholder
+              const target = e.currentTarget
+              target.src = '/placeholder.jpg'
+            }}
+          />
+        )}
+        
+        {/* Wishlist Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 bg-white/80 hover:bg-white z-10"
+          onClick={toggleWishlist}
+          disabled={wishlistLoading}
+        >
+          <Heart 
+            className={`h-4 w-4 ${isInWishlist ? 'fill-red-500 text-red-500' : 'text-gray-600'}`}
+          />
+        </Button>
       </div>
 
       <CardContent className="p-6">
@@ -138,6 +227,40 @@ export default function ProjectsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+
+  // Utility functions
+  const calculateProgress = useCallback((raised: number, target: number) => {
+    if (target === 0) return 0
+    return Math.min((raised / target) * 100, 100)
+  }, [])
+
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }, [])
+
+  const getStatusBadgeColor = useCallback((status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 hover:bg-green-200'
+      case 'completed': return 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+      case 'funded': return 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+      case 'upcoming': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    }
+  }, [])
+
+  const getRiskBadgeColor = useCallback((risk: string) => {
+    switch (risk.toLowerCase()) {
+      case 'low': return 'bg-green-100 text-green-800 hover:bg-green-200'
+      case 'medium': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+      case 'high': return 'bg-red-100 text-red-800 hover:bg-red-200'
+      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    }
+  }, [])
 
   // Memoized filtered projects
   const filteredProjects = useMemo(() => {
@@ -259,7 +382,7 @@ export default function ProjectsPage() {
             {searchTerm || selectedFilter !== 'all' 
               ? 'No projects match your current filters.' 
               : 'No projects available at the moment.'}
-          </div>
+          </p>
           {(searchTerm || selectedFilter !== 'all') && (
             <Button
               variant="outline"
@@ -271,104 +394,6 @@ export default function ProjectsPage() {
               Clear Filters
             </Button>
           )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => {
-            const progress = calculateProgress(project.raisedAmount || 0, project.targetAmount || 1)
-            
-            return (
-              <Card key={project._id} className="hover:shadow-lg transition-shadow duration-200">
-                {project.images && project.images.length > 0 && (
-                  <ImageCarousel
-                    images={project.images}
-                    alt={project.title}
-                    className="w-full h-64"
-                    aspectRatio="video"
-                    showDots={true}
-                    showArrows={true}
-                  />
-                )}
-                
-                <CardHeader className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
-                    <Badge className={getStatusBadgeColor(project.status)}>
-                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>{project.location.area}, {project.location.city}</span>
-                    </div>
-                    <Badge className={getRiskBadgeColor(project.riskLevel || 'Medium')}>
-                      {project.riskLevel || 'Medium'} Risk
-                    </Badge>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600 text-sm line-clamp-3">
-                    {project.description}
-                  </p>
-
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium">{progress.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        Raised: {formatCurrency(project.raisedAmount || 0)}
-                      </span>
-                      <span className="font-medium">
-                        Target: {formatCurrency(project.targetAmount || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Key Details */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <div>
-                        <div className="text-gray-600">Expected Return</div>
-                        <div className="font-medium">{project.expectedReturn}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <div className="text-gray-600">Duration</div>
-                        <div className="font-medium">{project.duration}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <Link href={`/projects/${project._id}`}>
-                    <Button 
-                      className="w-full mt-4" 
-                      disabled={project.status !== 'active'}
-                    >
-                      {project.status === 'active' ? 'View Details' : 
-                       project.status === 'completed' ? 'View Details' : 
-                       'Coming Soon'}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )
-          })}
         </div>
       )}
     </div>

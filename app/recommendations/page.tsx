@@ -47,78 +47,84 @@ interface RecommendationsData {
 
 export default function RecommendationsPage() {
   const [riskTolerance, setRiskTolerance] = useState<string>("medium")
-  const [investmentAmount, setInvestmentAmount] = useState([5000000]) // PKR 50 Lakh - for API calls
-  const [sliderValue, setSliderValue] = useState([5000000]) // PKR 50 Lakh - for slider display
+  const [investmentAmount, setInvestmentAmount] = useState([5000000]) // PKR 50 Lakh
   const [preferredCity, setPreferredCity] = useState<string>("all")
   const [propertyType, setPropertyType] = useState<string>("all")
   const [duration, setDuration] = useState<string>("all")
-  const [recommendations, setRecommendations] = useState<Project[]>([])
+  const [allProjects, setAllProjects] = useState<Project[]>([]) // Store all projects
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updateTimer, setUpdateTimer] = useState<number | null>(null)
 
-  // Debounced effect for investment amount changes
+  // Fetch all projects once on component mount
   useEffect(() => {
-    if (sliderValue[0] !== investmentAmount[0]) {
-      setUpdateTimer(5) // Start 5 second countdown
-      
-      const countdownInterval = setInterval(() => {
-        setUpdateTimer(prev => {
-          if (prev && prev > 1) {
-            return prev - 1
-          } else {
-            clearInterval(countdownInterval)
-            return null
-          }
-        })
-      }, 100) // Update every 100ms for smooth countdown
+    fetchAllProjects()
+  }, [])
 
-      const timeoutId = setTimeout(() => {
-        setInvestmentAmount(sliderValue)
-        setUpdateTimer(null)
-        clearInterval(countdownInterval)
-      }, 500) // 500ms delay
-
-      return () => {
-        clearTimeout(timeoutId)
-        clearInterval(countdownInterval)
-      }
-    }
-  }, [sliderValue, investmentAmount])
-
-  // Fetch recommendations when filters change (except sliderValue)
-  useEffect(() => {
-    fetchRecommendations()
-  }, [riskTolerance, investmentAmount, preferredCity, propertyType, duration])
-
-  const fetchRecommendations = async () => {
+  const fetchAllProjects = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const params = new URLSearchParams({
-        riskTolerance,
-        investmentAmount: investmentAmount[0].toString(),
-        preferredCity,
-        propertyType,
-        duration
-      })
-
-      const response = await fetch(`/api/recommendations?${params}`, {
+      const response = await fetch('/api/projects', {
         credentials: 'include'
       })
 
       const result = await response.json()
 
       if (result.success) {
-        setRecommendations(result.data.recommendations)
+        // Transform projects to match the expected format
+        const transformedProjects = result.projects.map((project: any) => {
+          // Calculate progress
+          const progress = project.targetAmount > 0 ? 
+            Math.min((project.raisedAmount / project.targetAmount) * 100, 100) : 0;
+
+          // Calculate minimum investment (1% of target, minimum PKR 100,000, maximum PKR 5,000,000)
+          const minInvestmentCalc = Math.max(
+            100000, // Minimum PKR 1 Lakh
+            Math.min(
+              project.targetAmount * 0.01, // 1% of target
+              5000000 // Maximum PKR 50 Lakh
+            )
+          );
+
+          // Map risk level based on expected return
+          let riskLevel: 'low' | 'medium' | 'high' = 'medium';
+          if (project.expectedReturn <= 10) {
+            riskLevel = 'low';
+          } else if (project.expectedReturn >= 18) {
+            riskLevel = 'high';
+          }
+
+          return {
+            _id: project._id,
+            id: project._id.toString(),
+            title: project.title,
+            location: project.location?.address || `${project.location?.area}, ${project.location?.city}` || project.city || 'Location TBD',
+            city: project.location?.city || project.city || 'Unknown',
+            type: project.type,
+            status: project.status,
+            targetAmount: project.targetAmount,
+            raisedAmount: project.raisedAmount,
+            minInvestment: Math.round(minInvestmentCalc),
+            expectedReturn: project.expectedReturn,
+            duration: project.duration || 24, // Default 2 years
+            images: project.images || ['/placeholder.svg'],
+            description: project.description || 'No description available',
+            riskLevel,
+            progress: Math.round(progress),
+            category: project.category || project.type,
+            features: project.features || []
+          };
+        });
+
+        setAllProjects(transformedProjects.filter((p: Project) => p.status === 'active'));
       } else {
-        setError(result.error || 'Failed to fetch recommendations')
-        console.error('Failed to fetch recommendations:', result.error)
+        setError(result.error || 'Failed to fetch projects')
+        console.error('Failed to fetch projects:', result.error)
       }
     } catch (error) {
       setError('Network error occurred')
-      console.error('Error fetching recommendations:', error)
+      console.error('Error fetching projects:', error)
     } finally {
       setLoading(false)
     }
@@ -133,8 +139,55 @@ export default function RecommendationsPage() {
     }).format(amount)
   }
 
+  // Client-side filtering function
+  const getFilteredRecommendations = (): Project[] => {
+    let filtered = [...allProjects];
+
+    // Filter by risk tolerance
+    if (riskTolerance !== "all") {
+      filtered = filtered.filter((project) => project.riskLevel === riskTolerance);
+    }
+
+    // Filter by minimum investment amount
+    filtered = filtered.filter((project) => project.minInvestment <= investmentAmount[0]);
+
+    // Filter by city
+    if (preferredCity !== "all") {
+      filtered = filtered.filter((project) => 
+        project.city.toLowerCase().includes(preferredCity.toLowerCase())
+      );
+    }
+
+    // Filter by property type
+    if (propertyType !== "all") {
+      filtered = filtered.filter((project) => project.type === propertyType);
+    }
+
+    // Filter by duration
+    if (duration !== "all") {
+      const maxDuration = parseInt(duration);
+      filtered = filtered.filter((project) => project.duration <= maxDuration);
+    }
+
+    // Sort by expected return (descending), then by progress (ascending), then by newest first
+    return filtered.sort((a, b) => {
+      // Primary sort: Expected return (descending)
+      if (a.expectedReturn !== b.expectedReturn) {
+        return b.expectedReturn - a.expectedReturn;
+      }
+      
+      // Secondary sort: Progress (ascending - prefer newer projects)
+      if (a.progress !== b.progress) {
+        return a.progress - b.progress;
+      }
+      
+      // Tertiary sort: Alphabetical by title
+      return a.title.localeCompare(b.title);
+    });
+  }
+
   const getRecommendations = (): Project[] => {
-    return recommendations
+    return getFilteredRecommendations()
   }
 
   const filteredRecommendations = getRecommendations()
@@ -185,7 +238,7 @@ export default function RecommendationsPage() {
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={fetchRecommendations}>Try Again</Button>
+              <Button onClick={fetchAllProjects}>Try Again</Button>
             </div>
           </div>
         </div>
@@ -267,19 +320,12 @@ export default function RecommendationsPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">
-                    Maximum Investment Amount: {formatCurrency(sliderValue[0])}
-                  </label>
-                  {updateTimer && (
-                    <span className="text-xs text-blue-600 font-medium animate-pulse">
-                      Updating in 0.{updateTimer}s...
-                    </span>
-                  )}
-                </div>
+                <label className="text-sm font-medium">
+                  Maximum Investment Amount: {formatCurrency(investmentAmount[0])}
+                </label>
                 <Slider
-                  value={sliderValue}
-                  onValueChange={setSliderValue}
+                  value={investmentAmount}
+                  onValueChange={setInvestmentAmount}
                   max={50000000}
                   min={500000}
                   step={500000}
@@ -311,17 +357,24 @@ export default function RecommendationsPage() {
 
         {/* Recommendations */}
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xl font-semibold">{filteredRecommendations.length} Recommended Projects</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">
+              {filteredRecommendations.length} Recommended Projects
+              {allProjects.length > 0 && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (of {allProjects.length} total)
+                </span>
+              )}
+            </h2>
             {loading && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <span>Updating...</span>
+                <span>Loading projects...</span>
               </div>
             )}
           </div>
 
-          {!loading && filteredRecommendations.length === 0 ? (
+          {!loading && filteredRecommendations.length === 0 && allProjects.length > 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -329,7 +382,7 @@ export default function RecommendationsPage() {
                 <p className="text-muted-foreground">Try adjusting your preferences to see more options</p>
               </CardContent>
             </Card>
-          ) : (
+          ) : !loading && allProjects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredRecommendations.map((project, index) => (
                 <Card key={project.id} className="overflow-hidden relative">
@@ -427,7 +480,15 @@ export default function RecommendationsPage() {
                 </Card>
               ))}
             </div>
-          )}
+          ) : !loading && allProjects.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">No projects available</h3>
+                <p className="text-muted-foreground">Check back later for new investment opportunities</p>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </RoleGuard>

@@ -10,55 +10,122 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, Building2 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 interface CartItem {
   projectId: string
-  projectTitle: string
   amount: number
-  projectImage: string
-  expectedReturn: number
-  location: string
   addedAt: string
+  project: {
+    _id: string
+    title: string
+    location: {
+      city: string
+      area: string
+    }
+    targetAmount: number
+    raisedAmount: number
+    expectedReturn: number
+    minInvestment: number
+    status: string
+    images?: string[]
+  }
 }
 
 export default function CartPage() {
   const router = useRouter()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PK', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'PKR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
   }
 
   useEffect(() => {
-    // Load cart items from localStorage
-    const savedCart = localStorage.getItem('investmentCart')
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart))
-    }
-    setLoading(false)
+    fetchCart()
   }, [])
 
-  const updateCartItem = (projectId: string, newAmount: number) => {
-    const updatedItems = cartItems.map((item) => {
-      if (item.projectId === projectId) {
-        return { ...item, amount: newAmount }
+  const fetchCart = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/user/cart')
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setCartItems(data.cart || [])
+        } else {
+          setError(data.message || 'Failed to fetch cart')
+        }
+      } else {
+        setError('Failed to fetch cart')
       }
-      return item
-    })
-    setCartItems(updatedItems)
-    localStorage.setItem('investmentCart', JSON.stringify(updatedItems))
+    } catch (error) {
+      console.error('Error fetching cart:', error)
+      setError('Failed to fetch cart')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const removeCartItem = (projectId: string) => {
-    const updatedItems = cartItems.filter((item) => item.projectId !== projectId)
-    setCartItems(updatedItems)
-    localStorage.setItem('investmentCart', JSON.stringify(updatedItems))
+  const updateCartItem = async (projectId: string, newAmount: number) => {
+    try {
+      const response = await fetch('/api/user/cart', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ projectId, amount: newAmount })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Update local state
+          setCartItems(prev => prev.map(item => 
+            item.projectId === projectId 
+              ? { ...item, amount: newAmount }
+              : item
+          ))
+        } else {
+          alert(data.message || 'Failed to update cart item')
+        }
+      } else {
+        alert('Failed to update cart item')
+      }
+    } catch (error) {
+      console.error('Error updating cart:', error)
+      alert('Failed to update cart item')
+    }
+  }
+
+  const removeCartItem = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/user/cart?projectId=${projectId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Update local state
+          setCartItems(prev => prev.filter(item => item.projectId !== projectId))
+        } else {
+          alert(data.message || 'Failed to remove cart item')
+        }
+      } else {
+        alert('Failed to remove cart item')
+      }
+    } catch (error) {
+      console.error('Error removing cart item:', error)
+      alert('Failed to remove cart item')
+    }
   }
 
   const totalAmount = cartItems.reduce((sum, item) => sum + item.amount, 0)
@@ -114,18 +181,18 @@ export default function CartPage() {
                     <div className="flex items-start space-x-4">
                       <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                         <img
-                          src={item.projectImage}
-                          alt={item.projectTitle}
+                          src={item.project.images?.[0] || "/placeholder.jpg"}
+                          alt={item.project.title}
                           className="w-full h-full object-cover"
                         />
                       </div>
 
                       <div className="flex-1 space-y-4">
                         <div>
-                          <h3 className="font-semibold text-lg">{item.projectTitle}</h3>
-                          <p className="text-muted-foreground">{item.location}</p>
+                          <h3 className="font-semibold text-lg">{item.project.title}</h3>
+                          <p className="text-muted-foreground">{item.project.location.area}, {item.project.location.city}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline">{item.expectedReturn}% Returns</Badge>
+                            <Badge variant="outline">{item.project.expectedReturn}% Returns</Badge>
                           </div>
                         </div>
 
@@ -137,7 +204,7 @@ export default function CartPage() {
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8 bg-transparent"
-                                onClick={() => updateCartItem(item.projectId, Math.max(1000, item.amount - 1000))}
+                                onClick={() => updateCartItem(item.projectId, Math.max(item.project.minInvestment, item.amount - 1000))}
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
@@ -146,7 +213,7 @@ export default function CartPage() {
                                 value={item.amount}
                                 onChange={(e) => updateCartItem(item.projectId, Number(e.target.value))}
                                 className="text-center"
-                                min={1000}
+                                min={item.project.minInvestment}
                               />
                               <Button
                                 variant="outline"
@@ -162,7 +229,7 @@ export default function CartPage() {
                           <div>
                             <label className="text-sm font-medium">Projected Returns</label>
                             <div className="text-lg font-semibold text-green-600 mt-1">
-                              {formatCurrency(item.amount * (item.expectedReturn / 100))}
+                              {formatCurrency(item.amount * (item.project.expectedReturn / 100))}
                             </div>
                           </div>
                         </div>

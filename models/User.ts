@@ -38,6 +38,16 @@ export interface IUser extends Document {
   isActive: boolean;
   lastLogin?: Date;
   
+  // Wishlist
+  wishlist: string[];
+  
+  // Cart
+  cart: Array<{
+    projectId: string;
+    amount: number;
+    addedAt: Date;
+  }>;
+  
   // Investor verification fields
   verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
   verificationData?: {
@@ -162,6 +172,26 @@ const userSchema = new Schema<IUser>({
   lastLogin: {
     type: Date
   },
+  wishlist: [{
+    type: String,
+    ref: 'Project'
+  }],
+  cart: [{
+    projectId: {
+      type: String,
+      ref: 'Project',
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   verificationStatus: {
     type: String,
     enum: ['none', 'pending', 'approved', 'rejected'],
