@@ -86,7 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch current user on app load
   const fetchCurrentUser = async () => {
     try {
-      console.log('🔍 Checking existing authentication...');
       const response = await fetch('/api/auth/me', {
         method: 'GET',
         credentials: 'include' // Include cookies
@@ -94,16 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔓 User is authenticated');
-        console.log('👤 Current User:', data.user);
-        console.log('🎭 Current Role:', data.user?.role);
         setUser(data.user);
       } else {
-        console.log('🔒 No authentication found');
         setUser(null);
       }
     } catch (error) {
-      console.error('❌ Error fetching current user:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -118,7 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Login function
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log('useAuth.login called with:', { email, password: '***' });
       setLoading(true);
       setError(null);
 
@@ -131,17 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('Login API response status:', response.status);
       const data = await response.json();
-      console.log('Login API response data:', data);
 
       if (response.ok) {
-        console.log('✅ Login successful!');
-        console.log('👤 User Data:', data.user);
-        console.log('🎭 User Role:', data.user?.role);
-        console.log('📧 User Email:', data.user?.email);
-        console.log('👋 Welcome:', `${data.user?.firstName} ${data.user?.lastName}`);
-        
         setUser(data.user);
         // Handle role-based redirect
         if (data.user.role === 'admin') {
@@ -157,7 +142,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error };
       }
     } catch (error: any) {
-      console.error('Login API error:', error);
       const errorMessage = 'Login failed. Please try again.';
       setError(errorMessage);
       return { success: false, error: errorMessage };

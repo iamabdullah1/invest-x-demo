@@ -217,8 +217,6 @@ export class CloudinaryService {
     originalFileName: string
   ) {
     try {
-      console.log(`📤 Uploading project image: ${imageName} for project ${projectId}`);
-
       const result = await this.uploadFile(imageBuffer, {
         folder: `investx/projects/${projectId}`,
         public_id: `${imageName}_${Date.now()}`,
@@ -231,7 +229,6 @@ export class CloudinaryService {
       });
 
       if (result.success) {
-        console.log(`✅ Project image uploaded successfully: ${result.url}`);
         return {
           success: true,
           url: result.url,

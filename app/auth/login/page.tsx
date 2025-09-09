@@ -27,22 +27,16 @@ export default function LoginPage(): React.JSX.Element {
     setIsLoading(true)
     setError("")
 
-    console.log('🔐 Login attempt with:', { email, password: '***' });
-
     try {
       const result = await login(email, password)
-      console.log('📊 Login result:', result);
 
       if (result.success) {
-        console.log('🎉 Login successful! Redirecting...');
         // The useAuth hook handles role-based redirects automatically
         // No need for manual redirect here as useAuth will handle it
       } else {
-        console.log('❌ Login failed:', result.error);
         setError(result.error || 'Login failed')
       }
     } catch (error) {
-      console.error('💥 Login error:', error);
       setError('Failed to login. Please try again.')
     } finally {
       setIsLoading(false)

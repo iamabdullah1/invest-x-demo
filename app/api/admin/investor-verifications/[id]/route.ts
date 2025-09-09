@@ -79,12 +79,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    console.log(`✅ Verification ${action}d by admin ${user.email} for user: ${targetUser.email}`);
-    
-    if (action === 'approve') {
-      console.log(`🎉 User ${targetUser.email} role upgraded to 'investor'`);
-    }
-
     return NextResponse.json({
       success: true,
       message: `Verification ${action}d successfully`,
@@ -159,8 +153,6 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         { status: 404 }
       );
     }
-
-    console.log(`🗑️ Verification request deleted by admin ${user.email} for user: ${targetUser.email}`);
 
     return NextResponse.json({
       success: true,

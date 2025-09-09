@@ -25,7 +25,6 @@ export function RouteGuard({
 
     // If authentication is required but user is not authenticated
     if (requireAuth && !isAuthenticated) {
-      console.log('🔒 Route Guard: Redirecting unauthenticated user to', redirectTo)
       router.replace(redirectTo)
       return
     }
@@ -33,7 +32,6 @@ export function RouteGuard({
     // If specific roles are required, check user role
     if (allowedRoles.length > 0 && user) {
       if (!allowedRoles.includes(user.role)) {
-        console.log('🔒 Route Guard: User role', user.role, 'not allowed. Required:', allowedRoles)
         // Redirect based on user role
         if (user.role === 'admin') {
           router.replace('/admin')
