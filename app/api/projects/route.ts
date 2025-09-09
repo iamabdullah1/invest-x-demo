@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
 
     const projects = await query.toArray();
 
+    console.log('Projects query filter:', filter);
+    console.log('Projects found:', projects.length);
+
     return NextResponse.json({
       success: true,
       projects: projects

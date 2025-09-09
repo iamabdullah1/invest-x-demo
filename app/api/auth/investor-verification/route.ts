@@ -4,6 +4,7 @@ import CloudinaryService from '@/lib/cloudinary';
 import { getCollection } from '@/lib/db';
 import JWTAuthService from '@/lib/jwtAuth';
 import { ObjectId } from 'mongodb';
+import { OptimizedDatabaseService } from '@/lib/optimized-database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -182,56 +183,22 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    const skip = (page - 1) * limit;
 
-    // Build query - fetch users with verification requests
-    const query: any = {};
-    if (status && status !== 'all') {
-      query.verificationStatus = status;
-    } else {
-      // If no specific status, show all users who have submitted verification (not 'none')
-      query.verificationStatus = { $ne: 'none' };
-    }
-
-    // Get users with verification requests
-    const usersCollection = await getCollection('users');
-    const users = await usersCollection
-      .find(query)
-      .sort({ 'verificationData.submittedAt': -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
-
-    const total = await usersCollection.countDocuments(query);
-
-    // Transform data to match expected format
-    const verifications = users.map(user => ({
-      _id: user._id,
-      verificationId: user.verificationData?.verificationId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      address: user.verificationData?.address,
-      city: user.city,
-      postalCode: user.verificationData?.postalCode,
-      frontIdUrl: user.verificationData?.frontIdUrl,
-      backIdUrl: user.verificationData?.backIdUrl,
-      status: user.verificationStatus,
-      submittedAt: user.verificationData?.submittedAt,
-      reviewedAt: user.verificationData?.reviewedAt,
-      reviewedBy: user.verificationData?.reviewedBy,
-      rejectionReason: user.verificationData?.rejectionReason,
-    }));
+    // Use optimized database service with caching
+    const result = await OptimizedDatabaseService.getVerificationRequests(
+      status || undefined,
+      { page, limit },
+      { useCache: true } // Enable caching for admin queries
+    );
 
     return NextResponse.json({
       success: true,
-      verifications,
+      verifications: result.verifications,
       pagination: {
-        page,
+        page: result.page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: result.total,
+        totalPages: result.totalPages
       }
     });
 
