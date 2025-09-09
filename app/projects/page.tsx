@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, DollarSign } from "lucide-react"
+import { Search, MapPin, DollarSign, Calendar } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
 
 interface Project {
@@ -176,10 +177,12 @@ export default function ProjectsPage() {
           setProjects([])
         }
       } else {
-        console.error('Failed to fetch projects:', response.status, response.statusText);
+        console.error('Failed to fetch projects:', response.status, response.statusText)
+        setProjects([])
       }
     } catch (error) {
       console.error('Error fetching projects:', error)
+      setProjects([])
     } finally {
       setLoading(false)
     }
@@ -247,19 +250,13 @@ export default function ProjectsPage() {
       </div>
 
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <ProjectCard key={project._id} project={project} />
-        ))}
-      </div>
-
-      {filteredProjects.length === 0 && (
+      {filteredProjects.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             {searchTerm || selectedFilter !== 'all' 
               ? 'No projects match your current filters.' 
               : 'No projects available at the moment.'}
-          </div>
+          </p>
           {(searchTerm || selectedFilter !== 'all') && (
             <Button
               variant="outline"
@@ -267,6 +264,7 @@ export default function ProjectsPage() {
                 setSearchTerm('')
                 setSelectedFilter('all')
               }}
+              className="mt-4"
             >
               Clear Filters
             </Button>
@@ -274,101 +272,9 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => {
-            const progress = calculateProgress(project.raisedAmount || 0, project.targetAmount || 1)
-            
-            return (
-              <Card key={project._id} className="hover:shadow-lg transition-shadow duration-200">
-                {project.images && project.images.length > 0 && (
-                  <ImageCarousel
-                    images={project.images}
-                    alt={project.title}
-                    className="w-full h-64"
-                    aspectRatio="video"
-                    showDots={true}
-                    showArrows={true}
-                  />
-                )}
-                
-                <CardHeader className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
-                    <Badge className={getStatusBadgeColor(project.status)}>
-                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>{project.location.area}, {project.location.city}</span>
-                    </div>
-                    <Badge className={getRiskBadgeColor(project.riskLevel || 'Medium')}>
-                      {project.riskLevel || 'Medium'} Risk
-                    </Badge>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600 text-sm line-clamp-3">
-                    {project.description}
-                  </p>
-
-                  {/* Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium">{progress.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">
-                        Raised: {formatCurrency(project.raisedAmount || 0)}
-                      </span>
-                      <span className="font-medium">
-                        Target: {formatCurrency(project.targetAmount || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Key Details */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <div>
-                        <div className="text-gray-600">Expected Return</div>
-                        <div className="font-medium">{project.expectedReturn}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <div>
-                        <div className="text-gray-600">Duration</div>
-                        <div className="font-medium">{project.duration}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <Link href={`/projects/${project._id}`}>
-                    <Button 
-                      className="w-full mt-4" 
-                      disabled={project.status !== 'active'}
-                    >
-                      {project.status === 'active' ? 'View Details' : 
-                       project.status === 'completed' ? 'View Details' : 
-                       'Coming Soon'}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )
-          })}
+          {filteredProjects.map((project) => (
+            <ProjectCard key={project._id} project={project} />
+          ))}
         </div>
       )}
     </div>
