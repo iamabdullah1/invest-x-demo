@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, DollarSign, Calendar, Heart } from "lucide-react"
+import { Search, MapPin, DollarSign, Calendar } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
@@ -299,10 +299,12 @@ export default function ProjectsPage() {
           setProjects([])
         }
       } else {
-        console.error('Failed to fetch projects:', response.status, response.statusText);
+        console.error('Failed to fetch projects:', response.status, response.statusText)
+        setProjects([])
       }
     } catch (error) {
       console.error('Error fetching projects:', error)
+      setProjects([])
     } finally {
       setLoading(false)
     }
@@ -370,13 +372,7 @@ export default function ProjectsPage() {
       </div>
 
       {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <ProjectCard key={project._id} project={project} />
-        ))}
-      </div>
-
-      {filteredProjects.length === 0 && (
+      {filteredProjects.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             {searchTerm || selectedFilter !== 'all' 
@@ -390,10 +386,17 @@ export default function ProjectsPage() {
                 setSearchTerm('')
                 setSelectedFilter('all')
               }}
+              className="mt-4"
             >
               Clear Filters
             </Button>
           )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <ProjectCard key={project._id} project={project} />
+          ))}
         </div>
       )}
     </div>

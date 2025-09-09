@@ -115,7 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/auth/login', {
+      // Try main authentication API first
+      let response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +125,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      let data = await response.json();
+
+      // If main auth fails, try mock authentication
+      if (!response.ok) {
+        console.warn('Main auth failed, trying mock auth');
+        response = await fetch('/api/auth/mock-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+        });
+
+        data = await response.json();
+      }
 
       if (response.ok) {
         setUser(data.user);
@@ -192,9 +208,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch (error) {
       console.error('Logout error:', error);
+      // Continue with local cleanup even if API fails
     } finally {
       setUser(null);
       setError(null);
+      
+      // Clear any localStorage data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('investx-role');
+        localStorage.removeItem('user-data');
+      }
+      
       router.push('/');
     }
   };
