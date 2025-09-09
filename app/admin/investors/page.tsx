@@ -1,3 +1,6 @@
+'use client'
+
+import { useState, useEffect } from "react"
 import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -5,69 +8,75 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Search, Mail, Phone, MapPin, TrendingUp, MoreHorizontal } from "lucide-react"
+import { Users, Search, Mail, Phone, MapPin, TrendingUp, MoreHorizontal, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { formatCurrency } from "@/lib/mockData"
 
-// Mock investor data
-const mockInvestors = [
-  {
-    id: "inv-1",
-    name: "Ahmed Khan",
-    email: "ahmed@example.com",
-    phone: "+92 300 1234567",
-    city: "Karachi",
-    joinDate: "2024-01-15",
-    totalInvested: 7000000,
-    activeInvestments: 3,
-    status: "active",
-    riskProfile: "moderate",
-    avatar: "/professional-pakistani-man.png",
-  },
-  {
-    id: "inv-2",
-    name: "Fatima Ali",
-    email: "fatima@example.com",
-    phone: "+92 321 9876543",
-    city: "Lahore",
-    joinDate: "2024-02-20",
-    totalInvested: 12000000,
-    activeInvestments: 5,
-    status: "active",
-    riskProfile: "aggressive",
-    avatar: "/professional-pakistani-woman.png",
-  },
-  {
-    id: "inv-3",
-    name: "Hassan Sheikh",
-    email: "hassan@example.com",
-    phone: "+92 333 5555555",
-    city: "Islamabad",
-    joinDate: "2024-03-10",
-    totalInvested: 3500000,
-    activeInvestments: 2,
-    status: "pending",
-    riskProfile: "conservative",
-  },
-  {
-    id: "inv-4",
-    name: "Ayesha Malik",
-    email: "ayesha@example.com",
-    phone: "+92 345 7777777",
-    city: "Rawalpindi",
-    joinDate: "2024-04-05",
-    totalInvested: 8500000,
-    activeInvestments: 4,
-    status: "active",
-    riskProfile: "moderate",
-  },
-]
+interface Investor {
+  id: string
+  name: string
+  email: string
+  phone: string
+  city: string
+  joinDate: string
+  totalInvested: number
+  portfolioValue: number
+  activeInvestments: number
+  status: 'active' | 'pending' | 'suspended'
+  verificationStatus: string
+  role: string
+  avatar?: string
+  isEmailVerified: boolean
+  lastLogin?: string
+}
+
+interface InvestorStats {
+  totalInvestors: number
+  activeInvestors: number
+  pendingInvestors: number
+  totalInvested: number
+}
 
 export default function AdminInvestorsPage() {
-  const totalInvestors = mockInvestors.length
-  const activeInvestors = mockInvestors.filter((inv) => inv.status === "active").length
-  const pendingInvestors = mockInvestors.filter((inv) => inv.status === "pending").length
-  const totalInvested = mockInvestors.reduce((sum, inv) => sum + inv.totalInvested, 0)
+  const [investors, setInvestors] = useState<Investor[]>([])
+  const [stats, setStats] = useState<InvestorStats>({
+    totalInvestors: 0,
+    activeInvestors: 0,
+    pendingInvestors: 0,
+    totalInvested: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [cityFilter, setCityFilter] = useState('all')
+
+  const fetchInvestors = async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      if (searchTerm) params.set('search', searchTerm)
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (cityFilter !== 'all') params.set('city', cityFilter)
+
+      const response = await fetch(`/api/admin/investors?${params.toString()}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setInvestors(data.data.investors)
+        setStats(data.data.stats)
+      } else {
+        console.error('Failed to fetch investors:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching investors:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchInvestors()
+  }, [searchTerm, statusFilter, cityFilter])
 
   const getInitials = (name: string) => {
     return name
@@ -94,7 +103,7 @@ export default function AdminInvestorsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalInvestors}</div>
+              <div className="text-2xl font-bold">{stats.totalInvestors}</div>
               <p className="text-xs text-muted-foreground">Registered users</p>
             </CardContent>
           </Card>
@@ -105,7 +114,7 @@ export default function AdminInvestorsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeInvestors}</div>
+              <div className="text-2xl font-bold">{stats.activeInvestors}</div>
               <p className="text-xs text-green-600">Currently investing</p>
             </CardContent>
           </Card>
@@ -116,7 +125,7 @@ export default function AdminInvestorsPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingInvestors}</div>
+              <div className="text-2xl font-bold">{stats.pendingInvestors}</div>
               <p className="text-xs text-yellow-600">Awaiting verification</p>
             </CardContent>
           </Card>
@@ -127,7 +136,7 @@ export default function AdminInvestorsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalInvested)}</div>
               <p className="text-xs text-muted-foreground">Platform total</p>
             </CardContent>
           </Card>
@@ -142,9 +151,14 @@ export default function AdminInvestorsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search investors..." className="pl-10" />
+                <Input 
+                  placeholder="Search investors..." 
+                  className="pl-10" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-              <Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -155,7 +169,7 @@ export default function AdminInvestorsPage() {
                   <SelectItem value="suspended">Suspended</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
+              <Select value={cityFilter} onValueChange={setCityFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="City" />
                 </SelectTrigger>
@@ -167,17 +181,20 @@ export default function AdminInvestorsPage() {
                   <SelectItem value="rawalpindi">Rawalpindi</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Risk Profile" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Profiles</SelectItem>
-                  <SelectItem value="conservative">Conservative</SelectItem>
-                  <SelectItem value="moderate">Moderate</SelectItem>
-                  <SelectItem value="aggressive">Aggressive</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button 
+                onClick={fetchInvestors}
+                disabled={loading}
+                variant="outline"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading
+                  </>
+                ) : (
+                  'Refresh'
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -188,86 +205,102 @@ export default function AdminInvestorsPage() {
             <CardTitle>All Investors</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mockInvestors.map((investor) => (
-                <div key={investor.id} className="border rounded-lg p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={investor.avatar || "/placeholder.svg"} alt={investor.name} />
-                        <AvatarFallback>{getInitials(investor.name)}</AvatarFallback>
-                      </Avatar>
-                      <div className="space-y-2">
-                        <div>
-                          <h3 className="text-lg font-semibold">{investor.name}</h3>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center">
-                              <Mail className="h-4 w-4 mr-1" />
-                              {investor.email}
-                            </div>
-                            <div className="flex items-center">
-                              <Phone className="h-4 w-4 mr-1" />
-                              {investor.phone}
-                            </div>
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-1" />
-                              {investor.city}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading investors...</span>
+              </div>
+            ) : investors.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No investors found.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {investors.map((investor) => (
+                  <div key={investor.id} className="border rounded-lg p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={investor.avatar || "/placeholder.svg"} alt={investor.name} />
+                          <AvatarFallback>{getInitials(investor.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-2">
+                          <div>
+                            <h3 className="text-lg font-semibold">{investor.name}</h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center">
+                                <Mail className="h-4 w-4 mr-1" />
+                                {investor.email}
+                              </div>
+                              <div className="flex items-center">
+                                <Phone className="h-4 w-4 mr-1" />
+                                {investor.phone}
+                              </div>
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                {investor.city}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              investor.status === "active"
-                                ? "default"
-                                : investor.status === "pending"
-                                  ? "secondary"
-                                  : "destructive"
-                            }
-                          >
-                            {investor.status}
-                          </Badge>
-                          <Badge variant="outline">{investor.riskProfile}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
+                                investor.status === "active"
+                                  ? "default"
+                                  : investor.status === "pending"
+                                    ? "secondary"
+                                    : "destructive"
+                              }
+                            >
+                              {investor.status}
+                            </Badge>
+                            <Badge variant="outline">{investor.role}</Badge>
+                            {investor.isEmailVerified && (
+                              <Badge variant="outline" className="text-green-600">
+                                Verified
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>View Profile</DropdownMenuItem>
+                          <DropdownMenuItem>Send Message</DropdownMenuItem>
+                          <DropdownMenuItem>View Investments</DropdownMenuItem>
+                          {investor.status === "pending" && <DropdownMenuItem>Approve Account</DropdownMenuItem>}
+                          <DropdownMenuItem className="text-red-600">Suspend Account</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Profile</DropdownMenuItem>
-                        <DropdownMenuItem>Send Message</DropdownMenuItem>
-                        <DropdownMenuItem>View Investments</DropdownMenuItem>
-                        {investor.status === "pending" && <DropdownMenuItem>Approve Account</DropdownMenuItem>}
-                        <DropdownMenuItem className="text-red-600">Suspend Account</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4 pt-4 border-t">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total Invested</div>
-                      <div className="font-semibold">{formatCurrency(investor.totalInvested)}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Active Investments</div>
-                      <div className="font-semibold">{investor.activeInvestments}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Join Date</div>
-                      <div className="font-semibold">{new Date(investor.joinDate).toLocaleDateString()}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Risk Profile</div>
-                      <div className="font-semibold capitalize">{investor.riskProfile}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4 pt-4 border-t">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total Invested</div>
+                        <div className="font-semibold">{formatCurrency(investor.totalInvested)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Active Investments</div>
+                        <div className="font-semibold">{investor.activeInvestments}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Join Date</div>
+                        <div className="font-semibold">{new Date(investor.joinDate).toLocaleDateString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Portfolio Value</div>
+                        <div className="font-semibold">{formatCurrency(investor.portfolioValue)}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
