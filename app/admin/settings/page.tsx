@@ -79,31 +79,7 @@ export default function AdminSettingsPage() {
     platformName: "InvestX",
     platformDescription: "Real Estate Investment Platform for Pakistan",
     supportEmail: "support@investx.com",
-    adminEmail: "admin@investx.com",
-
-    // Investment Settings
-    minInvestmentAmount: "500000",
-    maxInvestmentAmount: "50000000",
-    platformFee: "1",
-    withdrawalFee: "0.5",
-
-    // Notification Settings
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    marketingEmails: false,
-
-    // Security Settings
-    twoFactorAuth: true,
-    sessionTimeout: "30",
-    passwordExpiry: "90",
-    loginAttempts: "5",
-
-    // Feature Flags
-    newProjectApproval: true,
-    autoInvestorVerification: false,
-    maintenanceMode: false,
-    betaFeatures: false,
+    adminEmail: "admin@investx.com"
   })
 
   // Fetch real-time data
@@ -188,10 +164,6 @@ export default function AdminSettingsPage() {
           <TabsList>
             <TabsTrigger value="overview">Live Overview</TabsTrigger>
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="investment">Investment</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="features">Features</TabsTrigger>
           </TabsList>
 
           {/* Real-Time Overview Tab */}
@@ -407,92 +379,78 @@ export default function AdminSettingsPage() {
                       <Separator />
                       <div className="flex justify-between">
                         <span>Approval Rate</span>
-                        <span className="font-semibold text-green-600">
-                          {realTimeData.realTimeMetrics.verification.approvalRate}%
-                        </span>
+                        <span className="font-semibold text-green-600">{realTimeData.realTimeMetrics.verification.approvalRate}%</span>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* Recent Activity */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Clock className="h-5 w-5 mr-2" />
-                      Recent Activity
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Recent Investments</h4>
-                      <div className="space-y-2">
-                        {realTimeData.recentActivity.investments.slice(0, 5).map((investment) => (
-                          <div key={investment.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                            <div>
-                              <span className="text-sm font-medium">{investment.user}</span>
-                              <span className="text-xs text-muted-foreground ml-2">invested in {investment.project}</span>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm font-semibold">{formatPKR(investment.amount)}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(investment.time).toLocaleDateString()}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Investments</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {realTimeData.recentActivity.investments.length > 0 ? (
+                          realTimeData.recentActivity.investments.map((investment, index) => (
+                            <div key={index} className="flex justify-between items-center py-2 border-b last:border-0">
+                              <div>
+                                <p className="font-medium text-sm">{investment.user}</p>
+                                <p className="text-xs text-muted-foreground">{investment.project}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-sm">{formatPKR(investment.amount)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(investment.time).toLocaleTimeString()}
+                                </p>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        ) : (
+                          <p className="text-center py-4 text-muted-foreground">No recent investments</p>
+                        )}
                       </div>
+                    </CardContent>
+                  </Card>
 
-                      <Separator />
-
-                      <h4 className="font-medium">New Users</h4>
-                      <div className="space-y-2">
-                        {realTimeData.recentActivity.newUsers.map((user) => (
-                          <div key={user.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                            <div>
-                              <span className="text-sm font-medium">{user.name}</span>
-                              <span className="text-xs text-muted-foreground ml-2">joined</span>
-                            </div>
-                            <div className="text-right">
-                              <Badge 
-                                variant="outline" 
-                                className={
-                                  user.verificationStatus === 'approved' ? 'bg-green-50' :
-                                  user.verificationStatus === 'pending' ? 'bg-yellow-50' : 'bg-red-50'
-                                }
-                              >
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>New Users</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {realTimeData.recentActivity.newUsers.length > 0 ? (
+                          realTimeData.recentActivity.newUsers.map((user, index) => (
+                            <div key={index} className="flex justify-between items-center py-2 border-b last:border-0">
+                              <div>
+                                <p className="font-medium text-sm">{user.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(user.joinedAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <Badge variant={user.verificationStatus === 'approved' ? 'default' : 'outline'}>
                                 {user.verificationStatus}
                               </Badge>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(user.joinedAt).toLocaleDateString()}
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        ) : (
+                          <p className="text-center py-4 text-muted-foreground">No new users</p>
+                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               </>
-            )}
-
-            {loading && (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-muted-foreground">Loading real-time data...</p>
-                </CardContent>
-              </Card>
             )}
           </TabsContent>
 
+          {/* General Settings Tab */}
           <TabsContent value="general" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="h-5 w-5 mr-2" />
-                  Platform Information
-                </CardTitle>
+                <CardTitle>General Platform Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -521,236 +479,6 @@ export default function AdminSettingsPage() {
                     value={settings.platformDescription}
                     onChange={(e) => handleInputChange("platformDescription", e.target.value)}
                     rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="adminEmail">Admin Email</Label>
-                  <Input
-                    id="adminEmail"
-                    type="email"
-                    value={settings.adminEmail}
-                    onChange={(e) => handleInputChange("adminEmail", e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="investment" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2" />
-                  Investment Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="minInvestment">Minimum Investment (PKR)</Label>
-                    <Input
-                      id="minInvestment"
-                      type="number"
-                      value={settings.minInvestmentAmount}
-                      onChange={(e) => handleInputChange("minInvestmentAmount", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxInvestment">Maximum Investment (PKR)</Label>
-                    <Input
-                      id="maxInvestment"
-                      type="number"
-                      value={settings.maxInvestmentAmount}
-                      onChange={(e) => handleInputChange("maxInvestmentAmount", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="platformFee">Platform Fee (%)</Label>
-                    <Input
-                      id="platformFee"
-                      type="number"
-                      step="0.1"
-                      value={settings.platformFee}
-                      onChange={(e) => handleInputChange("platformFee", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="withdrawalFee">Withdrawal Fee (%)</Label>
-                    <Input
-                      id="withdrawalFee"
-                      type="number"
-                      step="0.1"
-                      value={settings.withdrawalFee}
-                      onChange={(e) => handleInputChange("withdrawalFee", e.target.value)}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Bell className="h-5 w-5 mr-2" />
-                  Notification Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Email Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Send notifications via email</p>
-                  </div>
-                  <Switch
-                    checked={settings.emailNotifications}
-                    onCheckedChange={(checked) => handleInputChange("emailNotifications", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>SMS Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Send notifications via SMS</p>
-                  </div>
-                  <Switch
-                    checked={settings.smsNotifications}
-                    onCheckedChange={(checked) => handleInputChange("smsNotifications", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Push Notifications</Label>
-                    <p className="text-sm text-muted-foreground">Send push notifications to mobile apps</p>
-                  </div>
-                  <Switch
-                    checked={settings.pushNotifications}
-                    onCheckedChange={(checked) => handleInputChange("pushNotifications", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Marketing Emails</Label>
-                    <p className="text-sm text-muted-foreground">Send promotional and marketing emails</p>
-                  </div>
-                  <Switch
-                    checked={settings.marketingEmails}
-                    onCheckedChange={(checked) => handleInputChange("marketingEmails", checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="security" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="h-5 w-5 mr-2" />
-                  Security Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Two-Factor Authentication</Label>
-                    <p className="text-sm text-muted-foreground">Require 2FA for admin accounts</p>
-                  </div>
-                  <Switch
-                    checked={settings.twoFactorAuth}
-                    onCheckedChange={(checked) => handleInputChange("twoFactorAuth", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                    <Input
-                      id="sessionTimeout"
-                      type="number"
-                      value={settings.sessionTimeout}
-                      onChange={(e) => handleInputChange("sessionTimeout", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="passwordExpiry">Password Expiry (days)</Label>
-                    <Input
-                      id="passwordExpiry"
-                      type="number"
-                      value={settings.passwordExpiry}
-                      onChange={(e) => handleInputChange("passwordExpiry", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loginAttempts">Max Login Attempts</Label>
-                  <Input
-                    id="loginAttempts"
-                    type="number"
-                    value={settings.loginAttempts}
-                    onChange={(e) => handleInputChange("loginAttempts", e.target.value)}
-                    className="max-w-xs"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="features" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Database className="h-5 w-5 mr-2" />
-                  Feature Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>New Project Approval</Label>
-                    <p className="text-sm text-muted-foreground">Require admin approval for new projects</p>
-                  </div>
-                  <Switch
-                    checked={settings.newProjectApproval}
-                    onCheckedChange={(checked) => handleInputChange("newProjectApproval", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Auto Investor Verification</Label>
-                    <p className="text-sm text-muted-foreground">Automatically verify new investor accounts</p>
-                  </div>
-                  <Switch
-                    checked={settings.autoInvestorVerification}
-                    onCheckedChange={(checked) => handleInputChange("autoInvestorVerification", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Maintenance Mode</Label>
-                    <p className="text-sm text-muted-foreground">Enable maintenance mode for platform updates</p>
-                  </div>
-                  <Switch
-                    checked={settings.maintenanceMode}
-                    onCheckedChange={(checked) => handleInputChange("maintenanceMode", checked)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Beta Features</Label>
-                    <p className="text-sm text-muted-foreground">Enable experimental features for testing</p>
-                  </div>
-                  <Switch
-                    checked={settings.betaFeatures}
-                    onCheckedChange={(checked) => handleInputChange("betaFeatures", checked)}
                   />
                 </div>
               </CardContent>

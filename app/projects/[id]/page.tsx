@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock } from "lucide-react"
+import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock, Eye } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
 import { formatPKR, formatPKRPercentage, validatePKRAmount, parsePKR, amountToWordsPKR } from "@/lib/currency"
+import { useAuth } from "@/hooks/useAuth"
 
 interface Project {
   _id: string
@@ -75,11 +76,16 @@ export default function ProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
+  const { user, hasRole } = useAuth()
   
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [investmentAmount, setInvestmentAmount] = useState("")
   const [investing, setInvesting] = useState(false)
+
+  // Check if user can invest (investor or admin role)
+  const canInvest = hasRole('investor')
+  const isGuest = !user || user.role === 'guest'
 
   useEffect(() => {
     if (projectId) {
@@ -254,12 +260,24 @@ export default function ProjectDetailPage() {
                 >
                   {project.riskLevel} risk
                 </Badge>
+                {isGuest && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    <Eye className="w-3 h-3 mr-1" />
+                    Preview Mode
+                  </Badge>
+                )}
               </div>
               <h1 className="text-3xl font-bold">{project.title}</h1>
               <p className="text-muted-foreground flex items-center mt-2">
                 <MapPin className="h-4 w-4 mr-1" />
                 {project.location?.area || 'N/A'}, {project.location?.city || 'N/A'}
               </p>
+              {isGuest && (
+                <p className="text-sm text-blue-600 mt-2 flex items-center">
+                  <Eye className="w-4 h-4 mr-1" />
+                  You're viewing this project as a guest. Register as an investor to invest.
+                </p>
+              )}
             </div>
 
             {/* Key Stats */}
@@ -310,47 +328,49 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Investment Calculator */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calculator className="h-5 w-5 mr-2" />
-                  Investment Calculator
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="investment">Investment Amount (PKR)</Label>
-                  <Input
-                    id="investment"
-                    type="number"
-                    placeholder={`Min. ${formatPKR(project.minInvestment)}`}
-                    value={investmentAmount}
-                    onChange={(e) => setInvestmentAmount(e.target.value)}
-                  />
-                </div>
-                {investmentValue > 0 && (
-                  <div className="space-y-2 p-4 bg-muted rounded-lg">
-                    <div className="flex justify-between">
-                      <span>Investment Share:</span>
-                      <span className="font-medium">{((investmentValue / project.targetAmount) * 100).toFixed(2)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Projected Returns:</span>
-                      <span className="font-medium text-green-600">{formatPKR(projectedReturns)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total Value:</span>
-                      <span className="font-bold">{formatPKR(investmentValue + projectedReturns)}</span>
-                    </div>
+            {/* Investment Calculator - Only for Investors */}
+            {canInvest && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Calculator className="h-5 w-5 mr-2" />
+                    Investment Calculator
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="investment">Investment Amount (PKR)</Label>
+                    <Input
+                      id="investment"
+                      type="number"
+                      placeholder={`Min. ${formatPKR(project.minInvestment)}`}
+                      value={investmentAmount}
+                      onChange={(e) => setInvestmentAmount(e.target.value)}
+                    />
                   </div>
-                )}
-                <Button onClick={handleAddToCart} className="w-full" disabled={investmentValue < project.minInvestment}>
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Add to Cart
-                </Button>
-              </CardContent>
-            </Card>
+                  {investmentValue > 0 && (
+                    <div className="space-y-2 p-4 bg-muted rounded-lg">
+                      <div className="flex justify-between">
+                        <span>Investment Share:</span>
+                        <span className="font-medium">{((investmentValue / project.targetAmount) * 100).toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Projected Returns:</span>
+                        <span className="font-medium text-green-600">{formatPKR(projectedReturns)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total Value:</span>
+                        <span className="font-bold">{formatPKR(investmentValue + projectedReturns)}</span>
+                      </div>
+                    </div>
+                  )}
+                  <Button onClick={handleAddToCart} className="w-full" disabled={investmentValue < project.minInvestment}>
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Add to Cart
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 

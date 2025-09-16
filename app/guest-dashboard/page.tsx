@@ -6,20 +6,73 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Building2, UserCheck, Star, ArrowRight, Eye, RefreshCw, Clock, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import { mockProjects, formatCurrency } from "@/lib/mockData"
 import { useAuth } from "@/hooks/useAuth"
 import { useState, useEffect } from "react"
+import Image from "next/image"
+
+interface Project {
+  _id: string
+  id: string
+  title: string
+  location: {
+    area?: string
+    city: string
+    address?: string
+  }
+  type: string
+  status: string
+  targetAmount: number
+  raisedAmount: number
+  minInvestment: number
+  expectedReturn: number
+  duration: number
+  images: string[]
+  developer: {
+    name: string
+  }
+  featured?: boolean
+  progress: number
+}
+
+// Currency formatter for PKR
+const formatCurrency = (amount: number) => {
+  if (amount >= 10000000) {
+    return `PKR ${(amount / 10000000).toFixed(1)} Cr`
+  } else if (amount >= 100000) {
+    return `PKR ${(amount / 100000).toFixed(1)} Lac`
+  } else {
+    return `PKR ${amount.toLocaleString()}`
+  }
+}
 
 export default function GuestDashboardPage() {
   const { user, refreshUser } = useAuth()
   const [verificationStatus, setVerificationStatus] = useState<string>('none')
   const [verificationData, setVerificationData] = useState<any>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
 
-  // Get top 3 projects for preview
-  const featuredProjects = mockProjects
-    .sort((a, b) => b.expectedReturn - a.expectedReturn)
-    .slice(0, 3)
+  // Fetch real projects from the database
+  const fetchProjects = async () => {
+    try {
+      setProjectsLoading(true)
+      const response = await fetch('/api/projects?limit=3&featured=true')
+      if (response.ok) {
+        const data = await response.json()
+        setProjects(data.projects || [])
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
+
+  // Get featured projects (top 3 by expected return if no featured projects)
+  const featuredProjects = projects.length > 0 
+    ? projects.slice(0, 3)
+    : []
 
   // Check verification status
   const checkVerificationStatus = async () => {
@@ -42,10 +95,11 @@ export default function GuestDashboardPage() {
     }
   }
 
-  // Auto-refresh verification status every 2 minutes (reduced from 30 seconds)
+  // Auto-refresh verification status every 2 minutes and fetch projects
   useEffect(() => {
     checkVerificationStatus()
-    const interval = setInterval(checkVerificationStatus, 120000) // 2 minutes instead of 30 seconds
+    fetchProjects()
+    const interval = setInterval(checkVerificationStatus, 120000) // 2 minutes
     return () => clearInterval(interval)
   }, [user])
 
@@ -221,45 +275,76 @@ export default function GuestDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {featuredProjects.map((project, index) => (
-                <Card key={project.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="aspect-video overflow-hidden relative">
-                    <img
-                      src={project.images[0] || "/placeholder.svg"}
-                      alt={project.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 left-2">
-                      <Badge variant="secondary">
-                        {project.expectedReturn}% Returns
-                      </Badge>
-                    </div>
-                    {index === 0 && (
-                      <div className="absolute top-2 right-2">
-                        <Badge className="bg-yellow-500 hover:bg-yellow-600">
-                          🏆 Top Pick
+              {projectsLoading ? (
+                // Loading skeleton
+                Array.from({ length: 3 }).map((_, index) => (
+                  <Card key={index} className="overflow-hidden animate-pulse">
+                    <div className="aspect-video bg-gray-200"></div>
+                    <CardContent className="p-4">
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="h-3 bg-gray-200 rounded w-16"></div>
+                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        </div>
+                        <div className="h-8 bg-gray-200 rounded w-16"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : featuredProjects.length > 0 ? (
+                featuredProjects.map((project, index) => (
+                  <Card key={project._id} className="overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="aspect-video overflow-hidden relative">
+                      <Image
+                        src={project.images[0] || "/placeholder.svg"}
+                        alt={project.title}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="secondary">
+                          {project.expectedReturn}% Returns
                         </Badge>
                       </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm mb-2 line-clamp-1">{project.title}</h3>
-                    <p className="text-xs text-muted-foreground mb-3">{project.location}</p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Min Investment</p>
-                        <p className="font-medium text-sm">{formatCurrency(project.minInvestment)}</p>
-                      </div>
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/projects/${project.id}`}>
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Link>
-                      </Button>
+                      {(index === 0 || project.featured) && (
+                        <div className="absolute top-2 right-2">
+                          <Badge className="bg-yellow-500 hover:bg-yellow-600">
+                            🏆 Top Pick
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-sm mb-2 line-clamp-1">{project.title}</h3>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        {project.location?.area && project.location?.city 
+                          ? `${project.location.area}, ${project.location.city}`
+                          : project.location?.city || 'Location not specified'
+                        }
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Min Investment</p>
+                          <p className="font-medium text-sm">{formatCurrency(project.minInvestment)}</p>
+                        </div>
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/projects/${project.id || project._id}`}>
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-8">
+                  <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No featured projects available at the moment.</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -273,7 +358,7 @@ export default function GuestDashboardPage() {
                   <Building2 className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold">{mockProjects.length}+</h3>
+                  <h3 className="text-2xl font-bold">{projects.length}+</h3>
                   <p className="text-sm text-muted-foreground">Active Projects</p>
                 </div>
               </div>
@@ -287,7 +372,12 @@ export default function GuestDashboardPage() {
                   <TrendingUp className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold">15%</h3>
+                  <h3 className="text-2xl font-bold">
+                    {projects.length > 0 
+                      ? Math.round(projects.reduce((acc, p) => acc + p.expectedReturn, 0) / projects.length)
+                      : 15
+                    }%
+                  </h3>
                   <p className="text-sm text-muted-foreground">Average Returns</p>
                 </div>
               </div>
