@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Target, TrendingUp, MapPin, Calendar, Heart, ShoppingCart, Sparkles } from "lucide-react"
+import { Target, TrendingUp, MapPin, Calendar, Heart, Sparkles } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -192,6 +192,15 @@ export default function RecommendationsPage() {
 
   const filteredRecommendations = getRecommendations()
 
+  const [wishlistItems, setWishlistItems] = useState<string[]>([])
+
+  // Load wishlist items on component mount
+  useEffect(() => {
+    const savedWishlist = localStorage.getItem("investx-wishlist")
+    const wishlistIds = savedWishlist ? JSON.parse(savedWishlist) : []
+    setWishlistItems(wishlistIds)
+  }, [])
+
   const addToWishlist = (projectId: string) => {
     const savedWishlist = localStorage.getItem("investx-wishlist")
     const wishlistIds = savedWishlist ? JSON.parse(savedWishlist) : []
@@ -199,6 +208,25 @@ export default function RecommendationsPage() {
     if (!wishlistIds.includes(projectId)) {
       wishlistIds.push(projectId)
       localStorage.setItem("investx-wishlist", JSON.stringify(wishlistIds))
+      setWishlistItems(wishlistIds)
+      // You can add a toast notification here if you have a toast system
+    }
+  }
+
+  const removeFromWishlist = (projectId: string) => {
+    const savedWishlist = localStorage.getItem("investx-wishlist")
+    const wishlistIds = savedWishlist ? JSON.parse(savedWishlist) : []
+    const updatedWishlist = wishlistIds.filter((id: string) => id !== projectId)
+    
+    localStorage.setItem("investx-wishlist", JSON.stringify(updatedWishlist))
+    setWishlistItems(updatedWishlist)
+  }
+
+  const toggleWishlist = (projectId: string) => {
+    if (wishlistItems.includes(projectId)) {
+      removeFromWishlist(projectId)
+    } else {
+      addToWishlist(projectId)
     }
   }
 
@@ -463,18 +491,19 @@ export default function RecommendationsPage() {
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" onClick={() => addToWishlist(project.id)}>
-                        <Heart className="h-4 w-4" />
+                      <Button 
+                        variant={wishlistItems.includes(project.id) ? "default" : "outline"} 
+                        size="sm" 
+                        onClick={() => toggleWishlist(project.id)}
+                        className={wishlistItems.includes(project.id) ? "text-white bg-red-500 hover:bg-red-600" : ""}
+                      >
+                        <Heart className={`h-4 w-4 ${wishlistItems.includes(project.id) ? 'fill-current' : ''}`} />
                       </Button>
                       <Link href={`/projects/${project.id}`} className="flex-1">
                         <Button variant="outline" className="w-full bg-transparent">
                           View Details
                         </Button>
                       </Link>
-                      <Button className="flex-1">
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Invest
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>

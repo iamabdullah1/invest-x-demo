@@ -182,7 +182,12 @@ export default function CartPage() {
                       <div className="flex-1 space-y-4">
                         <div>
                           <h3 className="font-semibold text-lg">{item.project.title}</h3>
-                          <p className="text-muted-foreground">{item.project.location.area}, {item.project.location.city}</p>
+                          <p className="text-muted-foreground">
+                            {item.project.location?.area && item.project.location?.city 
+                              ? `${item.project.location.area}, ${item.project.location.city}`
+                              : item.project.location?.city || 'Location not specified'
+                            }
+                          </p>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge variant="outline">{item.project.expectedReturn}% Returns</Badge>
                           </div>

@@ -1,36 +1,110 @@
-// Cloudinary service disabled for bundle optimization
+// Optimized Cloudinary service - only loads when needed
+let cloudinaryV2: any = null;
+
+// Lazy load Cloudinary only when needed to avoid bundle bloat
+async function getCloudinary() {
+  if (!cloudinaryV2) {
+    const { v2 } = await import('cloudinary');
+    cloudinaryV2 = v2;
+    
+    cloudinaryV2.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+  return cloudinaryV2;
+}
 
 export class CloudinaryService {
-  static async uploadFile(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async uploadFile(fileBuffer: Buffer, fileName: string, folder?: string): Promise<any> {
+    try {
+      const cloudinary = await getCloudinary();
+      
+      return new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            resource_type: 'auto',
+            public_id: fileName,
+            folder: folder || 'investx',
+            use_filename: true,
+            unique_filename: false,
+          },
+          (error: any, result: any) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          }
+        ).end(fileBuffer);
+      });
+    } catch (error) {
+      throw new Error(`File upload failed: ${error}`);
+    }
   }
   
-  static async deleteFile(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async deleteFile(publicId: string): Promise<any> {
+    try {
+      const cloudinary = await getCloudinary();
+      return await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+      throw new Error(`File deletion failed: ${error}`);
+    }
   }
   
-  static async uploadProfilePicture(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async uploadProfilePicture(fileBuffer: Buffer, userId: string): Promise<any> {
+    const fileName = `profile_${userId}_${Date.now()}`;
+    return this.uploadFile(fileBuffer, fileName, 'investx/profiles');
   }
   
-  static async uploadIdCard(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async uploadIdCard(fileBuffer: Buffer, userId: string): Promise<any> {
+    const fileName = `id_card_${userId}_${Date.now()}`;
+    return this.uploadFile(fileBuffer, fileName, 'investx/documents');
   }
   
-  static async uploadProjectImages(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async uploadProjectImages(fileBuffers: Buffer[], projectId: string): Promise<any[]> {
+    const uploadPromises = fileBuffers.map((buffer, index) => {
+      const fileName = `project_${projectId}_${index}_${Date.now()}`;
+      return this.uploadFile(buffer, fileName, 'investx/projects');
+    });
+    
+    return Promise.all(uploadPromises);
   }
   
-  static async uploadProjectImage(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async uploadProjectImage(fileBuffer: Buffer, projectId: string, imageIndex?: number): Promise<any> {
+    const fileName = `project_${projectId}_${imageIndex || 0}_${Date.now()}`;
+    return this.uploadFile(fileBuffer, fileName, 'investx/projects');
   }
   
-  static async uploadVerificationDocuments(): Promise<any> {
-    throw new Error('Cloudinary service disabled for bundle optimization')
+  static async uploadVerificationDocuments(fileBuffers: Buffer[], userId: string): Promise<any[]> {
+    const uploadPromises = fileBuffers.map((buffer, index) => {
+      const fileName = `verification_${userId}_${index}_${Date.now()}`;
+      return this.uploadFile(buffer, fileName, 'investx/verification');
+    });
+    
+    return Promise.all(uploadPromises);
   }
   
-  static getOptimizedUrl(): string {
-    return '/placeholder.jpg'
+  static getOptimizedUrl(publicId: string, options?: {
+    width?: number;
+    height?: number;
+    quality?: string;
+    format?: string;
+  }): string {
+    if (!publicId || publicId === '/placeholder.jpg') {
+      return '/placeholder.jpg';
+    }
+    
+    const { width, height, quality = 'auto', format = 'auto' } = options || {};
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    
+    let transformations = `f_${format},q_${quality}`;
+    if (width) transformations += `,w_${width}`;
+    if (height) transformations += `,h_${height}`;
+    if (width && height) transformations += ',c_fill';
+    
+    return `https://res.cloudinary.com/${cloudName}/image/upload/${transformations}/${publicId}`;
   }
 }
 

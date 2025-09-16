@@ -146,14 +146,13 @@ export async function POST(request: NextRequest) {
           const uploadResult = await CloudinaryService.uploadProjectImage(
             imageBuffer,
             projectId,
-            `image_${index + 1}`,
-            imageFile.name
+            index
           );
           
-          if (uploadResult.success && uploadResult.url) {
-            imageUrls.push(uploadResult.url);
+          if (uploadResult && uploadResult.secure_url) {
+            imageUrls.push(uploadResult.secure_url);
           } else {
-            console.error(`Image ${index + 1} upload failed:`, uploadResult.error);
+            console.error(`Image ${index + 1} upload failed:`, uploadResult);
           }
         }
         
@@ -349,12 +348,11 @@ export async function PUT(request: NextRequest) {
         const uploadResult = await CloudinaryService.uploadProjectImage(
           buffer,
           projectId,
-          'main-image',
-          imageFile.name
+          0
         );
         
-        if (uploadResult.success && uploadResult.url) {
-          imageUrl = uploadResult.url;
+        if (uploadResult && uploadResult.secure_url) {
+          imageUrl = uploadResult.secure_url;
         }
       } catch (error) {
         console.error('Image upload failed:', error);
