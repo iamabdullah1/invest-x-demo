@@ -199,9 +199,9 @@ export default function AdminHomePage() {
                       <div className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span>Progress</span>
-                          <span>{Math.round(project.progress)}%</span>
+                          <span>{Math.round(project.progress || 0)}%</span>
                         </div>
-                        <Progress value={project.progress} />
+                        <Progress value={project.progress || 0} />
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>{formatCurrency(project.raisedAmount)}</span>
                           <span>{formatCurrency(project.targetAmount)}</span>

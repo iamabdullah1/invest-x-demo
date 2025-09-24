@@ -339,6 +339,22 @@ export default function AdminProjectsPage() {
                     <span className="text-muted-foreground">{project.duration} months</span>
                   </div>
                   
+                  {/* Inventory Actions */}
+                  <div className="pt-2 space-y-2">
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link href="/admin/inventory">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View All Inventory
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link href={`/inventory/new?projectId=${project._id}`}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Inventory
+                      </Link>
+                    </Button>
+                  </div>
+
                   <div className="text-xs text-muted-foreground">
                     Created: {new Date(project.createdAt).toLocaleDateString()}
                   </div>

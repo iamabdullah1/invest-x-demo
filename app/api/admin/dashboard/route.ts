@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
-import { User, Project, Investment } from '@/models';
+import { User, Project, Investment, InventoryCategory } from '@/models';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,19 +12,19 @@ export async function GET(request: NextRequest) {
     const completedProjects = await Project.countDocuments({ status: 'completed' });
     const upcomingProjects = await Project.countDocuments({ status: 'upcoming' });
 
-    // Calculate total raised and target amounts
-    const projectStats = await Project.aggregate([
+    // Calculate total raised and target amounts from inventory categories
+    const inventoryStats = await InventoryCategory.aggregate([
       {
         $group: {
           _id: null,
-          totalRaised: { $sum: '$raisedAmount' },
-          totalTarget: { $sum: '$targetAmount' }
+          totalRaised: { $sum: { $multiply: ['$price', '$tokensAvailable'] } },
+          totalTarget: { $sum: { $multiply: ['$price', '$totalTokens'] } }
         }
       }
     ]);
 
-    const totalRaised = projectStats[0]?.totalRaised || 0;
-    const totalTarget = projectStats[0]?.totalTarget || 0;
+    const totalRaised = inventoryStats[0]?.totalRaised || 0;
+    const totalTarget = inventoryStats[0]?.totalTarget || 0;
 
     // Fetch investor statistics
     const totalInvestors = await User.countDocuments({ 
@@ -43,8 +43,27 @@ export async function GET(request: NextRequest) {
     const recentProjects = await Project.find()
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('title location status raisedAmount targetAmount')
+      .select('title location status _id')
       .lean();
+
+    // Get inventory data for these projects
+    const projectIds = recentProjects.map(p => p._id);
+    const inventoryData = await InventoryCategory.find({ projectId: { $in: projectIds } })
+      .select('projectId price tokensAvailable totalTokens')
+      .lean();
+
+    // Calculate raised and target amounts for each project
+    const projectsWithFinancials = recentProjects.map(project => {
+      const projectInventory = inventoryData.filter(inv => inv.projectId.toString() === project._id.toString());
+      const raisedAmount = projectInventory.reduce((sum, inv) => sum + (inv.price * inv.tokensAvailable), 0);
+      const targetAmount = projectInventory.reduce((sum, inv) => sum + (inv.price * inv.totalTokens), 0);
+
+      return {
+        ...project,
+        raisedAmount,
+        targetAmount
+      };
+    });
 
     // Get recent activity (investments)
     const recentInvestments = await Investment.find()
@@ -72,13 +91,13 @@ export async function GET(request: NextRequest) {
     });
 
     // Add project milestones to activity
-    const projectMilestones = recentProjects.slice(0, 3).map((project: any, index) => {
-      const progress = project.targetAmount > 0 ? 
+    const projectMilestones = projectsWithFinancials.slice(0, 3).map((project: any, index) => {
+      const progress = project.targetAmount > 0 ?
         (project.raisedAmount / project.targetAmount) * 100 : 0;
-      
+
       let message = '';
       let status = 'info';
-      
+
       if (progress >= 100) {
         message = `${project.title} reached 100% funding`;
         status = 'success';
@@ -101,7 +120,13 @@ export async function GET(request: NextRequest) {
 
     // Combine and sort activities
     const allActivity = [...recentActivity, ...projectMilestones]
-      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .filter(activity => activity && activity.time)
+      .sort((a, b) => {
+        if (!a || !b || !a.time || !b.time) return 0;
+        const timeA = new Date(a.time).getTime();
+        const timeB = new Date(b.time).getTime();
+        return timeB - timeA;
+      })
       .slice(0, 5);
 
     return NextResponse.json({
@@ -118,9 +143,9 @@ export async function GET(request: NextRequest) {
           activeInvestors,
           pendingApprovals
         },
-        recentProjects: recentProjects.map(project => ({
+        recentProjects: projectsWithFinancials.map(project => ({
           ...project,
-          progress: project.targetAmount > 0 ? 
+          progress: project.targetAmount > 0 ?
             Math.min((project.raisedAmount / project.targetAmount) * 100, 100) : 0
         })),
         recentActivity: allActivity

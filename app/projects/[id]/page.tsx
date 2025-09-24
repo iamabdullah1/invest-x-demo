@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock, Eye } from "lucide-react"
+import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock, Eye, Package, List } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ImageCarousel } from "@/components/image-carousel"
+import { InventorySlider } from "@/components/inventory-slider"
 import { formatPKR, formatPKRPercentage, validatePKRAmount, parsePKR, amountToWordsPKR } from "@/lib/currency"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -70,7 +71,9 @@ interface Project {
   }
   totalInvestors: number
   createdAt: string
-}
+};
+
+
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -83,8 +86,8 @@ export default function ProjectDetailPage() {
   const [investmentAmount, setInvestmentAmount] = useState("")
   const [investing, setInvesting] = useState(false)
 
-  // Check if user can invest (investor or admin role)
-  const canInvest = hasRole('investor')
+  // Check if user can invest (only investor role, not admin)
+  const canInvest = hasRole('investor') && !hasRole('admin')
   const isGuest = !user || user.role === 'guest'
 
   useEffect(() => {
@@ -114,6 +117,8 @@ export default function ProjectDetailPage() {
       setLoading(false)
     }
   }
+
+
 
   const calculateProgress = (raised: number, target: number) => {
     return Math.min((raised / target) * 100, 100)
@@ -229,7 +234,7 @@ export default function ProjectDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="aspect-video bg-muted rounded-2xl overflow-hidden relative">
+            <div className="aspect-[4/3] bg-muted rounded-2xl overflow-hidden relative">
               {project.images && project.images.length > 0 ? (
                 <ImageCarousel
                   images={project.images}
@@ -248,6 +253,9 @@ export default function ProjectDetailPage() {
                 />
               )}
             </div>
+
+            {/* Inventory Slider - Displayed beneath the project image */}
+            <InventorySlider projectId={projectId} />
 
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -371,6 +379,32 @@ export default function ProjectDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Inventory Actions - For all users */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Inventory Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Link href="/admin/inventory">
+                  <Button variant="outline" className="w-full">
+                    <List className="w-4 h-4 mr-2" />
+                    View All Inventory
+                  </Button>
+                </Link>
+                {hasRole('admin') && (
+                  <Link href={`/inventory/new?projectId=${projectId}`}>
+                    <Button variant="outline" className="w-full">
+                      <Package className="w-4 h-4 mr-2" />
+                      Add Inventory
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
 
