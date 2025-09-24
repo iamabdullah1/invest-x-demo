@@ -146,6 +146,10 @@ export default function EditInventoryPage() {
     })
   }
 
+  const removeNewImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -437,6 +441,111 @@ export default function EditInventoryPage() {
           {/* Right Column */}
        
         </div>
+
+        {/* Image Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Property Images</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Manage images for this property. You can remove existing images or add new ones.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Current Images */}
+            {imagePreviewUrls.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">Current Images</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                  {imagePreviewUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-square relative rounded-lg overflow-hidden border">
+                        <Image
+                          src={url}
+                          alt={`Property image ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeImage(index)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add New Images */}
+            <div>
+              <Label htmlFor="image-upload" className="text-sm font-medium">
+                Add New Images
+              </Label>
+              <div className="mt-2">
+                <input
+                  id="image-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <Label htmlFor="image-upload">
+                  <Button type="button" variant="outline" className="w-full h-24 border-dashed" asChild>
+                    <span className="cursor-pointer flex flex-col items-center justify-center">
+                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                      <span className="text-sm text-muted-foreground">
+                        Click to upload images
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        PNG, JPG, GIF up to 10MB each
+                      </span>
+                    </span>
+                  </Button>
+                </Label>
+              </div>
+            </div>
+
+            {/* New Image Previews */}
+            {imageFiles.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">New Images to Upload</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                  {imageFiles.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-square relative rounded-lg overflow-hidden border">
+                        <Image
+                          src={URL.createObjectURL(file)}
+                          alt={`New image ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeNewImage(index)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Form Actions */}
         <div className="flex justify-end gap-4 pt-6 border-t">
