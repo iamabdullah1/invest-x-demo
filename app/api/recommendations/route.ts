@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query filters
-    let query: any = {
+    const query: any = {
       status: 'active' // Only show active projects
     };
 

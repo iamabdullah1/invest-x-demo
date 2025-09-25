@@ -83,8 +83,6 @@ export default function ProjectDetailPage() {
   
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
-  const [investmentAmount, setInvestmentAmount] = useState("")
-  const [investing, setInvesting] = useState(false)
 
   // Check if user can invest (only investor role, not admin)
   const canInvest = hasRole('investor') && !hasRole('admin')
@@ -98,21 +96,34 @@ export default function ProjectDetailPage() {
 
   const fetchProject = async () => {
     try {
-      // Use admin API to get project details (in real app, create a public endpoint)
-      const response = await fetch(`/api/admin/projects?id=${projectId}`)
-      if (response.ok) {
-        const data = await response.json()
-        const projectData = data.projects[0]
-        if (projectData) {
-          console.log('Project data received:', projectData)
-          console.log('Project images:', projectData.images)
-          setProject(projectData)
-        }
+      console.log('Fetching project with ID:', projectId);
+      
+      // Use public API endpoint for project details
+      const response = await fetch(`/api/projects/${projectId}`)
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        console.error('Response not OK:', response.status, response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json()
+      console.log('Response data:', data);
+      
+      if (data.success && data.project) {
+        console.log('Project data received:', data.project)
+        console.log('Project images:', data.project.images)
+        setProject(data.project)
       } else {
-        console.error('Failed to fetch project:', response.status, response.statusText)
+        console.error('Project not found or API error:', data)
+        throw new Error(data.message || 'Project not found')
       }
     } catch (error) {
       console.error('Error fetching project:', error)
+      // Show user-friendly error
+      alert(`Failed to load project details: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -176,46 +187,6 @@ export default function ProjectDetailPage() {
 
   const progress = calculateProgress(project.raisedAmount, project.targetAmount)
   const remainingAmount = project.targetAmount - project.raisedAmount
-  const investmentValue = Number.parseFloat(investmentAmount) || 0
-  const projectedReturns = investmentValue * (project.expectedReturn / 100)
-
-  const handleAddToCart = async () => {
-    if (investmentValue < project.minInvestment) {
-      alert(`Minimum investment is ${formatPKR(project.minInvestment)}`)
-      return
-    }
-
-    try {
-      setInvesting(true)
-      const response = await fetch('/api/user/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: project._id,
-          amount: investmentValue
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          alert('Project added to cart successfully!')
-          router.push('/cart')
-        } else {
-          alert(data.message || 'Failed to add to cart')
-        }
-      } else {
-        alert('Failed to add to cart')
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error)
-      alert('Failed to add to cart')
-    } finally {
-      setInvesting(false)
-    }
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -255,7 +226,9 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* Inventory Slider - Displayed beneath the project image */}
-            <InventorySlider projectId={projectId} />
+            <div id="inventory-slider">
+              <InventorySlider projectId={projectId} />
+            </div>
 
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -309,17 +282,17 @@ export default function ProjectDetailPage() {
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-4">
-                  <div className="text-2xl font-bold">{project.area.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Total Area (sq ft)</div>
-                </CardContent>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{project.area ? project.area.toLocaleString() : 'N/A'}</div>
+                <div className="text-sm text-muted-foreground">Total Area (sq ft)</div>
+              </CardContent>
               </Card>
             </div>
           </div>
 
-          {/* Right: Sidebar with Investment Calculator */}
+          {/* Right: Sidebar with Project Info */}
           <div className="space-y-6">
-            {/* Funding Progress */}
+            Funding Progress
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-4">
@@ -336,63 +309,22 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Investment Calculator - Only for Investors */}
-            {canInvest && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Calculator className="h-5 w-5 mr-2" />
-                    Investment Calculator
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="investment">Investment Amount (PKR)</Label>
-                    <Input
-                      id="investment"
-                      type="number"
-                      placeholder={`Min. ${formatPKR(project.minInvestment)}`}
-                      value={investmentAmount}
-                      onChange={(e) => setInvestmentAmount(e.target.value)}
-                    />
-                  </div>
-                  {investmentValue > 0 && (
-                    <div className="space-y-2 p-4 bg-muted rounded-lg">
-                      <div className="flex justify-between">
-                        <span>Investment Share:</span>
-                        <span className="font-medium">{((investmentValue / project.targetAmount) * 100).toFixed(2)}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Projected Returns:</span>
-                        <span className="font-medium text-green-600">{formatPKR(projectedReturns)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Total Value:</span>
-                        <span className="font-bold">{formatPKR(investmentValue + projectedReturns)}</span>
-                      </div>
-                    </div>
-                  )}
-                  <Button onClick={handleAddToCart} className="w-full" disabled={investmentValue < project.minInvestment}>
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Add to Cart
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Inventory Actions - For all users */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Package className="h-5 w-5 mr-2" />
-                  Inventory Actions
+                  Available Inventory
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Link href="/admin/inventory">
+                <p className="text-sm text-muted-foreground">
+                  Invest in specific inventory items below. Each item represents available units in this project.
+                </p>
+                <Link href="#inventory-slider">
                   <Button variant="outline" className="w-full">
                     <List className="w-4 h-4 mr-2" />
-                    View All Inventory
+                    View Available Inventory
                   </Button>
                 </Link>
                 {hasRole('admin') && (
@@ -539,7 +471,7 @@ export default function ProjectDetailPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span>Total Area:</span>
-                    <span className="font-medium">{project.area.toLocaleString()} sq ft</span>
+                    <span className="font-medium">{project.area} sq ft</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Price per sq ft:</span>

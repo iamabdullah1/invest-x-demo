@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Package, MapPin, Building2, Eye, Edit, Plus, Search, X } from "lucide-react"
+import { ArrowLeft, Package, MapPin, Building2, Eye, Edit, Plus, Search, X, Trash2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { formatPKR } from "@/lib/currency"
@@ -119,6 +119,39 @@ export default function AdminInventoryPage() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount)
+  }
+
+  const handleDeleteInventory = async (inventoryId: string) => {
+    if (!confirm('Are you sure you want to delete this inventory item? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('auth-token') || document.cookie.replace(/(?:(?:^|.*;\s*)auth-token\s*\=\s*([^;]*).*$)|^.*$/, "$1")
+
+      const response = await fetch(`/api/admin/inventory?id=${inventoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          alert('Inventory item deleted successfully!')
+          // Refresh the inventory list
+          fetchInventory()
+        } else {
+          alert(data.error || 'Failed to delete inventory item')
+        }
+      } else {
+        alert('Failed to delete inventory item')
+      }
+    } catch (error) {
+      console.error('Error deleting inventory:', error)
+      alert('Failed to delete inventory item')
+    }
   }
 
   if (!mounted) {
@@ -304,6 +337,14 @@ export default function AdminInventoryPage() {
                               <Edit className="h-4 w-4" />
                             </Button>
                           </Link>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDeleteInventory(item._id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>

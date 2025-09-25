@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import { User, Project } from '@/models'
+import { User, Project, InventoryCategory } from '@/models'
 import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -34,21 +34,21 @@ export async function GET(request: NextRequest) {
 
     const cartItems = user.cart || []
 
-    // Get full project details for cart items
-    const projectIds = cartItems.map((item: any) => item.projectId)
-    const projects = await Project.find({ 
-      _id: { $in: projectIds },
-      status: { $in: ['active', 'funded'] }
-    })
+    // Get full inventory details for cart items
+    const inventoryIds = cartItems.map((item: any) => item.inventoryId).filter(Boolean)
+    const inventories = await InventoryCategory.find({ 
+      _id: { $in: inventoryIds }
+    }).populate('projectId', 'title location city status')
 
-    // Combine cart data with project details
+    // Combine cart data with inventory details
     const enrichedCart = cartItems.map((item: any) => {
-      const project = projects.find(p => p._id.toString() === item.projectId)
+      const inventory = inventories.find(i => i._id.toString() === item.inventoryId)
       return {
         ...item,
-        project: project || null
+        inventory: inventory || null,
+        project: inventory?.projectId || null
       }
-    }).filter((item: any) => item.project) // Remove items for projects that no longer exist
+    }).filter((item: any) => item.inventory) // Remove items for inventory that no longer exist
 
     return NextResponse.json({
       success: true,
@@ -79,27 +79,29 @@ export async function POST(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any
     const userId = decoded.userId
 
-    const { projectId, amount } = await request.json()
+    const { inventoryId, amount, sqft, pricePerSqFt } = await request.json()
 
-    if (!projectId || !amount || amount <= 0) {
+    if (!inventoryId || !amount || amount <= 0) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Project ID and valid amount are required' 
+        message: 'Inventory ID and valid amount are required' 
       }, { status: 400 })
     }
 
     await connectDB()
 
-    // Check if project exists and is available for investment
-    const project = await Project.findById(projectId)
-    if (!project) {
+    // Check if inventory exists
+    const inventory = await InventoryCategory.findById(inventoryId)
+    if (!inventory) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Project not found' 
+        message: 'Inventory item not found' 
       }, { status: 404 })
     }
 
-    if (!['active', 'funded'].includes(project.status)) {
+    // Check if project is available for investment
+    const project = await Project.findById(inventory.projectId)
+    if (!project || !['active', 'funded'].includes(project.status)) {
       return NextResponse.json({ 
         success: false, 
         message: 'Project is not available for investment' 
@@ -107,10 +109,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Check minimum investment
-    if (amount < project.minInvestment) {
+    const minAmount = inventory.minSquareFeet * inventory.pricePerSquareFoot
+    if (amount < minAmount) {
       return NextResponse.json({ 
         success: false, 
-        message: `Minimum investment is ${project.minInvestment}` 
+        message: `Minimum investment is ${minAmount}` 
+      }, { status: 400 })
+    }
+
+    // Check if requested area is available
+    if (sqft && sqft > inventory.totalArea) {
+      return NextResponse.json({ 
+        success: false, 
+        message: `Maximum available area is ${inventory.totalArea} sq ft` 
       }, { status: 400 })
     }
 
@@ -123,20 +134,24 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    let cart = user.cart || []
+    const cart = user.cart || []
 
     // Check if item already exists in cart
-    const existingItemIndex = cart.findIndex((item: any) => item.projectId === projectId)
+    const existingItemIndex = cart.findIndex((item: any) => item.inventoryId === inventoryId)
     
     if (existingItemIndex >= 0) {
       // Update existing item
       cart[existingItemIndex].amount = amount
+      cart[existingItemIndex].sqft = sqft
+      cart[existingItemIndex].pricePerSqFt = pricePerSqFt
       cart[existingItemIndex].addedAt = new Date()
     } else {
       // Add new item
       cart.push({
-        projectId,
+        inventoryId,
         amount,
+        sqft,
+        pricePerSqFt,
         addedAt: new Date()
       })
     }

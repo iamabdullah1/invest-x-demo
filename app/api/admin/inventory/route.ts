@@ -164,3 +164,50 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Authenticate and authorize admin user
+    const { user, error: authError } = await JWTAuthService.requireRole(request, 'admin');
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: authError || 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
+
+    const { searchParams } = new URL(request.url);
+    const inventoryId = searchParams.get('id');
+
+    if (!inventoryId) {
+      return NextResponse.json(
+        { success: false, error: 'Inventory ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find and delete the inventory item
+    const deletedInventory = await InventoryCategory.findByIdAndDelete(inventoryId);
+
+    if (!deletedInventory) {
+      return NextResponse.json(
+        { success: false, error: 'Inventory item not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Inventory item deleted successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Error deleting inventory item:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to delete inventory item' },
+      { status: 500 }
+    );
+  }
+}

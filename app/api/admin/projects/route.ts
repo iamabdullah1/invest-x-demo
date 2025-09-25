@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     console.log(`📤 Starting project creation for: ${title}`);
 
     // Upload images to Cloudinary
-    let imageUrls: string[] = [];
+    const imageUrls: string[] = [];
     if (imageFiles.length > 0) {
       console.log(`📤 Uploading ${imageFiles.length} images to Cloudinary...`);
       
