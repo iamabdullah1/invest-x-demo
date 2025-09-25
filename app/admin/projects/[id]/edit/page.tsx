@@ -57,12 +57,6 @@ export default function EditProjectPage() {
     type: '',
     status: '',
     developer: '',
-    targetAmount: '',
-    minInvestment: '',
-    expectedReturn: '',
-    duration: '',
-    area: '',
-    pricePerSqFt: '',
     startDate: '',
     endDate: '',
     riskLevel: ''
@@ -92,12 +86,6 @@ export default function EditProjectPage() {
             type: projectData.type || '',
             status: projectData.status || '',
             developer: projectData.developer?.name || '',
-            targetAmount: projectData.targetAmount?.toString() || '',
-            minInvestment: projectData.minInvestment?.toString() || '',
-            expectedReturn: projectData.expectedReturn?.toString() || '',
-            duration: projectData.duration?.toString() || '',
-            area: projectData.area?.toString() || '',
-            pricePerSqFt: projectData.pricePerSqFt?.toString() || '',
             startDate: projectData.timeline?.projectStart ? 
               new Date(projectData.timeline.projectStart).toISOString().split('T')[0] : '',
             endDate: projectData.timeline?.expectedCompletion ? 
@@ -346,97 +334,12 @@ export default function EditProjectPage() {
                 </CardContent>
               </Card>
 
-              {/* Financial Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Financial Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="targetAmount">Target Amount (USD)</Label>
-                      <Input
-                        id="targetAmount"
-                        type="number"
-                        value={formData.targetAmount}
-                        onChange={(e) => handleInputChange('targetAmount', e.target.value)}
-                        placeholder="1000000"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="minInvestment">Minimum Investment (USD)</Label>
-                      <Input
-                        id="minInvestment"
-                        type="number"
-                        value={formData.minInvestment}
-                        onChange={(e) => handleInputChange('minInvestment', e.target.value)}
-                        placeholder="10000"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="expectedReturn">Expected Return (%)</Label>
-                      <Input
-                        id="expectedReturn"
-                        type="number"
-                        step="0.1"
-                        value={formData.expectedReturn}
-                        onChange={(e) => handleInputChange('expectedReturn', e.target.value)}
-                        placeholder="15.5"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="duration">Duration (Months)</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        value={formData.duration}
-                        onChange={(e) => handleInputChange('duration', e.target.value)}
-                        placeholder="24"
-                        required
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Property Details */}
               <Card>
                 <CardHeader>
                   <CardTitle>Property Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="area">Total Area (sq ft)</Label>
-                      <Input
-                        id="area"
-                        type="number"
-                        value={formData.area}
-                        onChange={(e) => handleInputChange('area', e.target.value)}
-                        placeholder="50000"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="pricePerSqFt">Price per Sq Ft (USD)</Label>
-                      <Input
-                        id="pricePerSqFt"
-                        type="number"
-                        value={formData.pricePerSqFt}
-                        onChange={(e) => handleInputChange('pricePerSqFt', e.target.value)}
-                        placeholder="20"
-                        required
-                      />
-                    </div>
-                  </div>
-
                   <div>
                     <Label htmlFor="developer">Developer Name</Label>
                     <Input

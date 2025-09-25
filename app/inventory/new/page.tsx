@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Upload, X, Image as ImageIcon } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 function AddInventoryCategoryForm() {
   const router = useRouter()
@@ -36,6 +37,10 @@ function AddInventoryCategoryForm() {
     inventoryImages: [] as string[],
   })
 
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
+
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Fetch project data when projectId is available
@@ -59,6 +64,8 @@ function AddInventoryCategoryForm() {
             country: data.project.location?.country || "",
             city: data.project.location?.city || "",
             area: data.project.location?.area || "",
+            totalArea: data.project.area?.toString() || "",
+            pricePerSquareFoot: data.project.pricePerSqFt?.toString() || "",
           }))
         }
       }
@@ -74,6 +81,46 @@ function AddInventoryCategoryForm() {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }))
     }
+  }
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/')
+      const isValidSize = file.size <= 10 * 1024 * 1024 // 10MB
+      return isValidType && isValidSize
+    })
+
+    if (validFiles.length !== files.length) {
+      alert('Some files were skipped. Only images under 10MB are allowed.')
+    }
+
+    // Add new files to existing ones
+    setImageFiles(prev => [...prev, ...validFiles])
+
+    // Create preview URLs
+    validFiles.forEach(file => {
+      const url = URL.createObjectURL(file)
+      setImagePreviewUrls(prev => [...prev, url])
+    })
+
+    // Reset input
+    event.target.value = ''
+  }
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index))
+    setImagePreviewUrls(prev => {
+      const newUrls = prev.filter((_, i) => i !== index)
+      // Revoke object URL to prevent memory leaks
+      if (imagePreviewUrls[index].startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrls[index])
+      }
+      return newUrls
+    })
   }
 
   const validateForm = () => {
@@ -122,6 +169,32 @@ function AddInventoryCategoryForm() {
     setIsSubmitting(true)
 
     try {
+      // Upload images first
+      let uploadedImageUrls: string[] = []
+
+      if (imageFiles.length > 0) {
+        setUploadingImages(true)
+        const uploadPromises = imageFiles.map(async (file) => {
+          const formData = new FormData()
+          formData.append('file', file)
+
+          const response = await fetch('/api/upload/image', {
+            method: 'POST',
+            body: formData
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            return data.url
+          }
+          return null
+        })
+
+        const results = await Promise.all(uploadPromises)
+        uploadedImageUrls = results.filter(Boolean) as string[]
+        setUploadingImages(false)
+      }
+
       // Get auth token
       const token = localStorage.getItem('auth-token') || document.cookie.replace(/(?:(?:^|.*;\s*)auth-token\s*\=\s*([^;]*).*$)|^.*$/, "$1")
 
@@ -133,6 +206,7 @@ function AddInventoryCategoryForm() {
         },
         body: JSON.stringify({
           ...formData,
+          inventoryImages: uploadedImageUrls,
           totalArea: Number(formData.totalArea),
           minSquareFeet: Number(formData.minSquareFeet),
           pricePerSquareFoot: Number(formData.pricePerSquareFoot),
@@ -353,6 +427,77 @@ function AddInventoryCategoryForm() {
                 </div>
               </div>
 
+              {/* Image Upload */}
+              <div>
+                <Label className="text-base font-medium">Property Images</Label>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload high-quality images of the property. Multiple images are recommended.
+                </p>
+
+                {/* Current Images Preview */}
+                {imagePreviewUrls.length > 0 && (
+                  <div className="mb-4">
+                    <Label className="text-sm font-medium">Selected Images ({imagePreviewUrls.length})</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                      {imagePreviewUrls.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <div className="aspect-square relative rounded-lg overflow-hidden border">
+                            <Image
+                              src={url}
+                              alt={`Property image ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeImage(index)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Area */}
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                  <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                  <div className="space-y-2 text-center">
+                    <Label htmlFor="image-upload" className="text-sm font-medium cursor-pointer">
+                      <Button type="button" variant="outline" asChild>
+                        <span>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Choose Images
+                        </span>
+                      </Button>
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, GIF up to 10MB each
+                    </p>
+                    {imagePreviewUrls.length > 0 && (
+                      <p className="text-xs text-green-600 font-medium">
+                        {imagePreviewUrls.length} image{imagePreviewUrls.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+                  </div>
+                  <Input
+                    id="image-upload"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
               {/* Submit Button */}
               <div className="flex justify-end gap-4">
                 <Link href="/admin/projects">
@@ -360,8 +505,17 @@ function AddInventoryCategoryForm() {
                     Cancel
                   </Button>
                 </Link>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating..." : "Create Inventory"}
+                <Button type="submit" disabled={isSubmitting || uploadingImages}>
+                  {uploadingImages ? (
+                    <>
+                      <Upload className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading Images...
+                    </>
+                  ) : isSubmitting ? (
+                    "Creating..."
+                  ) : (
+                    "Create Inventory"
+                  )}
                 </Button>
               </div>
             </form>

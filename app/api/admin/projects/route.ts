@@ -88,14 +88,6 @@ export async function POST(request: NextRequest) {
     const developer = formData.get('developer') as string;
     const riskLevel = formData.get('riskLevel') as string;
     
-    // Financial details
-    const targetAmount = parseInt(formData.get('targetAmount') as string);
-    const minInvestment = parseInt(formData.get('minInvestment') as string);
-    const expectedReturn = parseFloat(formData.get('expectedReturn') as string);
-    const duration = parseInt(formData.get('duration') as string);
-    const area = parseInt(formData.get('area') as string);
-    const pricePerSqFt = parseInt(formData.get('pricePerSqFt') as string);
-    
     // Timeline
     const startDate = formData.get('startDate') as string;
     const endDate = formData.get('endDate') as string;
@@ -117,13 +109,6 @@ export async function POST(request: NextRequest) {
     if (!title || !description || !location || !city || !type || !developer) {
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    if (!targetAmount || !minInvestment || !expectedReturn || !duration) {
-      return NextResponse.json(
-        { error: 'Missing required financial details' },
         { status: 400 }
       );
     }
@@ -184,25 +169,10 @@ export async function POST(request: NextRequest) {
       type,
       status: 'active', // Set as active so investors can see it
       
-      // Financial details
-      targetAmount,
-      raisedAmount: 0,
-      minInvestment,
-      maxInvestment: Math.floor(targetAmount * 0.1), // 10% of target as max
-      expectedReturn,
-      actualReturn: null,
-      
       // Timeline
-      duration,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       fundingDeadline: new Date(new Date(startDate).getTime() + (30 * 24 * 60 * 60 * 1000)), // 30 days from start
-      
-      // Property details
-      area,
-      pricePerSqFt,
-      totalUnits: Math.floor(area / 1000), // Estimate based on area
-      availableUnits: Math.floor(area / 1000),
       
       // Media
       images: imageUrls,
@@ -315,14 +285,6 @@ export async function PUT(request: NextRequest) {
     const developer = formData.get('developer') as string;
     const riskLevel = formData.get('riskLevel') as string;
     
-    // Financial details
-    const targetAmount = parseInt(formData.get('targetAmount') as string);
-    const minInvestment = parseInt(formData.get('minInvestment') as string);
-    const expectedReturn = parseFloat(formData.get('expectedReturn') as string);
-    const duration = parseInt(formData.get('duration') as string);
-    const area = parseInt(formData.get('area') as string);
-    const pricePerSqFt = parseInt(formData.get('pricePerSqFt') as string);
-    
     // Timeline
     const startDate = formData.get('startDate') as string;
     const endDate = formData.get('endDate') as string;
@@ -372,18 +334,6 @@ export async function PUT(request: NextRequest) {
       type,
       status,
       
-      // Financial details
-      targetAmount,
-      raisedAmount: 0, // Keep existing raised amount
-      minInvestment,
-      expectedReturn,
-      duration,
-      
-      // Property details
-      area,
-      pricePerSqFt,
-      totalValue: area * pricePerSqFt,
-      
       // Timeline
       timeline: {
         projectStart: new Date(startDate),
@@ -396,7 +346,7 @@ export async function PUT(request: NextRequest) {
           },
           {
             name: 'Construction',
-            duration: `${duration} months`,
+            duration: '12 months',
             status: 'in-progress'
           }
         ]

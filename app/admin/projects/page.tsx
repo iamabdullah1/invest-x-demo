@@ -311,7 +311,7 @@ export default function AdminProjectsPage() {
                 
                 <CardContent className="space-y-4">
                   {/* Financial Info */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Target Amount:</span>
                       <span className="font-medium">{formatCurrency(project.targetAmount)}</span>
@@ -328,7 +328,7 @@ export default function AdminProjectsPage() {
                       <span>{calculateProgress(project.raisedAmount, project.targetAmount)}% funded</span>
                       <span>{project.expectedReturn}% expected return</span>
                     </div>
-                  </div>
+                  </div> */}
                   
                   {/* Project Details */}
                   <div className="flex justify-between items-center text-sm">

@@ -27,12 +27,6 @@ export default function AddProjectPage() {
     location: "",
     city: "",
     type: "",
-    targetAmount: "",
-    minInvestment: "",
-    expectedReturn: "",
-    duration: "",
-    area: "",
-    pricePerSqFt: "",
     description: "",
     developer: "",
     riskLevel: "",
@@ -262,89 +256,6 @@ export default function AddProjectPage() {
                   rows={4}
                   required
                 />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Financial Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="targetAmount">Target Amount (PKR)</Label>
-                  <Input
-                    id="targetAmount"
-                    type="number"
-                    placeholder="500000000"
-                    value={formData.targetAmount}
-                    onChange={(e) => handleInputChange("targetAmount", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minInvestment">Minimum Investment (PKR)</Label>
-                  <Input
-                    id="minInvestment"
-                    type="number"
-                    placeholder="1000000"
-                    value={formData.minInvestment}
-                    onChange={(e) => handleInputChange("minInvestment", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="expectedReturn">Expected Return (%)</Label>
-                  <Input
-                    id="expectedReturn"
-                    type="number"
-                    placeholder="22"
-                    value={formData.expectedReturn}
-                    onChange={(e) => handleInputChange("expectedReturn", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (months)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    placeholder="24"
-                    value={formData.duration}
-                    onChange={(e) => handleInputChange("duration", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="area">Total Area (sq ft)</Label>
-                  <Input
-                    id="area"
-                    type="number"
-                    placeholder="150000"
-                    value={formData.area}
-                    onChange={(e) => handleInputChange("area", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pricePerSqFt">Price per sq ft (PKR)</Label>
-                  <Input
-                    id="pricePerSqFt"
-                    type="number"
-                    placeholder="3333"
-                    value={formData.pricePerSqFt}
-                    onChange={(e) => handleInputChange("pricePerSqFt", e.target.value)}
-                    required
-                  />
-                </div>
               </div>
             </CardContent>
           </Card>

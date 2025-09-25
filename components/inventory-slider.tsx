@@ -4,28 +4,34 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, Package, MapPin, DollarSign } from "lucide-react"
+import { ChevronLeft, ChevronRight, Package, MapPin, DollarSign, ArrowRight } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { formatPKR } from "@/lib/currency"
 
 interface InventoryCategory {
   _id: string
-  title: string
+  projectId: {
+    _id: string
+    title: string
+    location?: {
+      city: string
+      area: string
+    }
+  }
   country: string
   city: string
   area: string
+  title: string
+  description: string
   propertyType: string
   propertySubType: string
-  sizeType: string
-  size: string
-  paymentType: string
-  price: number
-  discount: number
-  rebatePrice: number
-  bookingAmount: number
-  image: string
+  totalArea: number
+  minSquareFeet: number
+  pricePerSquareFoot: number
   inventoryImages: string[]
-  misc: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface InventorySliderProps {
@@ -35,7 +41,7 @@ interface InventorySliderProps {
 export function InventorySlider({ projectId }: InventorySliderProps) {
   const [inventory, setInventory] = useState<InventoryCategory[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [scrollPosition, setScrollPosition] = useState(0)
 
   useEffect(() => {
     fetchInventory()
@@ -57,12 +63,12 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
     }
   }
 
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % inventory.length)
+  const scrollLeft = () => {
+    setScrollPosition(prev => Math.max(0, prev - 320))
   }
 
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + inventory.length) % inventory.length)
+  const scrollRight = () => {
+    setScrollPosition(prev => Math.min((inventory.length - 1) * 320, prev + 320))
   }
 
   if (loading) {
@@ -92,8 +98,6 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
     )
   }
 
-  const currentItem = inventory[currentIndex]
-
   return (
     <Card>
       <CardHeader>
@@ -102,106 +106,96 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
             <Package className="h-5 w-5 mr-2" />
             Available Inventory ({inventory.length})
           </span>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={prevSlide}
-              disabled={inventory.length <= 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={nextSlide}
-              disabled={inventory.length <= 1}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          {inventory.length > 3 && (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={scrollLeft}
+                disabled={scrollPosition === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={scrollRight}
+                disabled={scrollPosition >= (inventory.length - 3) * 320}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {/* Main Image */}
-          <div className="aspect-[4/3] bg-muted rounded-lg overflow-hidden relative">
-            {currentItem.image ? (
-              <Image
-                src={currentItem.image}
-                alt={currentItem.title}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <Package className="h-12 w-12 text-muted-foreground" />
+        <div className="relative overflow-hidden">
+          <div
+            className="flex space-x-4 transition-transform duration-300 ease-in-out"
+            style={{ transform: `translateX(-${scrollPosition}px)` }}
+          >
+            {inventory.map((item) => (
+              <div key={item._id} className="flex-shrink-0 w-80">
+                <Card className="h-full">
+                  <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden relative">
+                    {item.inventoryImages && item.inventoryImages.length > 0 ? (
+                      <Image
+                        src={item.inventoryImages[0]}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <Package className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-lg line-clamp-2">{item.title}</h3>
+                        <div className="flex items-center text-sm text-muted-foreground mt-1">
+                          <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                          <span className="truncate">{item.area}, {item.city}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">Type</div>
+                          <div className="font-medium">{item.propertyType}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Area</div>
+                          <div className="font-medium">{item.totalArea} sq ft</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-1 text-green-600" />
+                          <span className="text-lg font-bold text-green-600">
+                            {formatPKR(item.pricePerSquareFoot * item.totalArea)}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {item.propertySubType}
+                        </Badge>
+                      </div>
+
+                      <Link href={`/inventory/${item._id}`}>
+                        <Button className="w-full" size="sm">
+                          Invest Now
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            )}
+            ))}
           </div>
-
-          {/* Inventory Details */}
-          <div className="space-y-3">
-            <div>
-              <h3 className="font-semibold text-lg">{currentItem.title}</h3>
-              <div className="flex items-center text-sm text-muted-foreground mt-1">
-                <MapPin className="h-4 w-4 mr-1" />
-                {currentItem.area}, {currentItem.city}, {currentItem.country}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Property Type</div>
-                <div className="font-medium">{currentItem.propertyType}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Sub Type</div>
-                <div className="font-medium">{currentItem.propertySubType}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Size</div>
-                <div className="font-medium">{currentItem.size} {currentItem.sizeType}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Payment Type</div>
-                <div className="font-medium">{currentItem.paymentType}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t">
-              <div className="flex items-center">
-                <DollarSign className="h-4 w-4 mr-1 text-green-600" />
-                <span className="text-lg font-bold text-green-600">
-                  {formatPKR(currentItem.price)}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Booking</div>
-                <div className="font-medium">{formatPKR(currentItem.bookingAmount)}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Badge variant="outline">{currentItem.propertyType}</Badge>
-              <Badge variant="outline">{currentItem.propertySubType}</Badge>
-            </div>
-          </div>
-
-          {/* Dots Indicator */}
-          {inventory.length > 1 && (
-            <div className="flex justify-center space-x-2">
-              {inventory.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentIndex ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

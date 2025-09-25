@@ -10,25 +10,10 @@ export interface IProject extends Document {
   type: 'residential' | 'commercial' | 'mixed';
   status: 'draft' | 'active' | 'funded' | 'completed' | 'cancelled';
   
-  // Financial details
-  targetAmount: number;
-  raisedAmount: number;
-  minInvestment: number;
-  maxInvestment?: number;
-  expectedReturn: number;
-  actualReturn?: number;
-  
   // Project timeline
-  duration: number; // in months
   startDate: Date;
   endDate: Date;
   fundingDeadline: Date;
-  
-  // Property details
-  area: number; // in sq ft
-  pricePerSqFt: number;
-  totalUnits?: number;
-  availableUnits?: number;
   
   // Media and documentation
   images: string[];
@@ -132,46 +117,6 @@ const projectSchema = new Schema<IProject>({
     enum: ['draft', 'active', 'funded', 'completed', 'cancelled'],
     default: 'draft'
   },
-  targetAmount: {
-    type: Number,
-    required: [true, 'Target amount is required'],
-    min: [1000000, 'Target amount must be at least PKR 10 Lakh']
-  },
-  raisedAmount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Raised amount cannot be negative']
-  },
-  minInvestment: {
-    type: Number,
-    required: [true, 'Minimum investment is required'],
-    min: [100000, 'Minimum investment must be at least PKR 1 Lakh']
-  },
-  maxInvestment: {
-    type: Number,
-    validate: {
-      validator: function(value: number) {
-        return !value || value >= this.minInvestment;
-      },
-      message: 'Maximum investment must be greater than minimum investment'
-    }
-  },
-  expectedReturn: {
-    type: Number,
-    required: [true, 'Expected return is required'],
-    min: [0, 'Expected return cannot be negative'],
-    max: [100, 'Expected return cannot exceed 100%']
-  },
-  actualReturn: {
-    type: Number,
-    min: [0, 'Actual return cannot be negative']
-  },
-  duration: {
-    type: Number,
-    required: [true, 'Project duration is required'],
-    min: [6, 'Duration must be at least 6 months'],
-    max: [120, 'Duration cannot exceed 10 years']
-  },
   startDate: {
     type: Date,
     required: [true, 'Start date is required']
@@ -183,24 +128,6 @@ const projectSchema = new Schema<IProject>({
   fundingDeadline: {
     type: Date,
     required: [true, 'Funding deadline is required']
-  },
-  area: {
-    type: Number,
-    required: [true, 'Project area is required'],
-    min: [500, 'Area must be at least 500 sq ft']
-  },
-  pricePerSqFt: {
-    type: Number,
-    required: [true, 'Price per sq ft is required'],
-    min: [1000, 'Price per sq ft must be at least PKR 1,000']
-  },
-  totalUnits: {
-    type: Number,
-    min: [1, 'Total units must be at least 1']
-  },
-  availableUnits: {
-    type: Number,
-    min: [0, 'Available units cannot be negative']
   },
   images: [{
     type: String,

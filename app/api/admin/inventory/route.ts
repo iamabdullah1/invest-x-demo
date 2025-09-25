@@ -12,12 +12,17 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     const search = searchParams.get('search');
     const propertyType = searchParams.get('propertyType');
+    const projectId = searchParams.get('projectId'); // Added projectId filter
 
     // Build filter object
     const filter: any = {};
     
     if (propertyType) {
       filter.propertyType = propertyType;
+    }
+
+    if (projectId) {
+      filter.projectId = projectId; // Filter by projectId if provided
     }
     
     if (search) {
