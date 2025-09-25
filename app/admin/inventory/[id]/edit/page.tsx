@@ -12,6 +12,7 @@ import { ArrowLeft, Save, X, Upload, Package } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/hooks/useAuth"
+import { useToast } from "@/hooks/use-toast"
 
 interface InventoryItem {
   _id: string
@@ -40,6 +41,7 @@ export default function EditInventoryPage() {
   const router = useRouter()
   const inventoryId = params.id as string
   const { hasRole } = useAuth()
+  const { toast } = useToast()
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -249,7 +251,11 @@ export default function EditInventoryPage() {
       })
 
       if (response.ok) {
-        router.push('/admin')
+        toast({
+          title: "Success",
+          description: "Inventory item updated successfully!",
+        })
+        router.push('/admin/inventory')
       } else {
         console.error('Failed to update inventory item:', response.status, response.statusText)
       }
