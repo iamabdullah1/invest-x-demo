@@ -41,20 +41,39 @@ interface InventorySliderProps {
 export function InventorySlider({ projectId }: InventorySliderProps) {
   const [inventory, setInventory] = useState<InventoryCategory[]>([])
   const [loading, setLoading] = useState(true)
-  const [scrollPosition, setScrollPosition] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [itemsPerView, setItemsPerView] = useState(3)
 
   useEffect(() => {
     fetchInventory()
   }, [projectId])
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (inventory.length <= itemsPerView) return
+      
+      if (event.key === 'ArrowLeft' && currentIndex > 0) {
+        scrollLeft()
+      } else if (event.key === 'ArrowRight' && currentIndex < inventory.length - itemsPerView) {
+        scrollRight()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentIndex, inventory.length, itemsPerView])
+
   const fetchInventory = async () => {
     try {
-      const response = await fetch(`/api/admin/inventory?projectId=${projectId}`)
+      const response = await fetch(`/api/projects/${projectId}/inventory`)
       if (response.ok) {
         const data = await response.json()
         if (data.success) {
           setInventory(data.inventory || [])
         }
+      } else {
+        console.error('API Error:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching inventory:', error)
@@ -64,11 +83,11 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
   }
 
   const scrollLeft = () => {
-    setScrollPosition(prev => Math.max(0, prev - 320))
+    setCurrentIndex(prev => Math.max(0, prev - 1))
   }
 
   const scrollRight = () => {
-    setScrollPosition(prev => Math.min((inventory.length - 1) * 320, prev + 320))
+    setCurrentIndex(prev => Math.min(inventory.length - itemsPerView, prev + 1))
   }
 
   if (loading) {
@@ -106,21 +125,26 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
             <Package className="h-5 w-5 mr-2" />
             Available Inventory ({inventory.length})
           </span>
-          {inventory.length > 3 && (
+          {inventory.length > itemsPerView && (
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={scrollLeft}
-                disabled={scrollPosition === 0}
+                disabled={currentIndex === 0}
+                className="hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
+              <span className="text-sm text-muted-foreground px-2 min-w-[80px] text-center">
+                {currentIndex + 1}-{Math.min(currentIndex + itemsPerView, inventory.length)} of {inventory.length}
+              </span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={scrollRight}
-                disabled={scrollPosition >= (inventory.length - 3) * 320}
+                disabled={currentIndex >= inventory.length - itemsPerView}
+                className="hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -129,71 +153,69 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="relative overflow-hidden">
-          <div
-            className="flex space-x-4 transition-transform duration-300 ease-in-out"
-            style={{ transform: `translateX(-${scrollPosition}px)` }}
-          >
-            {inventory.map((item) => (
-              <div key={item._id} className="flex-shrink-0 w-80">
-                <Card className="h-full">
-                  <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden relative">
-                    {item.inventoryImages && item.inventoryImages.length > 0 ? (
-                      <Image
-                        src={item.inventoryImages[0]}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <Package className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-semibold text-lg line-clamp-2">{item.title}</h3>
-                        <div className="flex items-center text-sm text-muted-foreground mt-1">
-                          <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                          <span className="truncate">{item.area}, {item.city}</span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <div className="text-muted-foreground">Type</div>
-                          <div className="font-medium">{item.propertyType}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted-foreground">Area</div>
-                          <div className="font-medium">{item.totalArea} sq ft</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-1 text-green-600" />
-                          <span className="text-lg font-bold text-green-600">
-                            {formatPKR(item.pricePerSquareFoot * item.totalArea)}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {item.propertySubType}
-                        </Badge>
-                      </div>
-
-                      <Link href={`/inventory/${item._id}`}>
-                        <Button className="w-full" size="sm">
-                          Invest Now
-                          <ArrowRight className="h-4 w-4 ml-2" />
-                        </Button>
-                      </Link>
+        <div className="relative">
+          <div className="grid gap-4" style={{ 
+            gridTemplateColumns: `repeat(${itemsPerView}, minmax(0, 1fr))`,
+            minHeight: '400px'
+          }}>
+            {inventory.slice(currentIndex, currentIndex + itemsPerView).map((item) => (
+              <Card key={item._id} className="h-full">
+                <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden relative">
+                  {item.inventoryImages && item.inventoryImages.length > 0 ? (
+                    <Image
+                      src={item.inventoryImages[0]}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <Package className="h-8 w-8 text-muted-foreground" />
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  )}
+                </div>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-lg line-clamp-2">{item.title}</h3>
+                      <div className="flex items-center text-sm text-muted-foreground mt-1">
+                        <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                        <span className="truncate">{item.area}, {item.city}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-muted-foreground">Type</div>
+                        <div className="font-medium">{item.propertyType}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Area</div>
+                        <div className="font-medium">{item.totalArea} sq ft</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-green-600" />
+                        <span className="text-lg font-bold text-green-600">
+                          {formatPKR(item.pricePerSquareFoot * item.totalArea)}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {item.propertySubType}
+                      </Badge>
+                    </div>
+
+                    <Link href={`/inventory/${item._id}`}>
+                      <Button className="w-full" size="sm">
+                        Invest Now
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
