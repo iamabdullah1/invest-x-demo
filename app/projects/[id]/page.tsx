@@ -226,7 +226,11 @@ export default function ProjectDetailPage() {
             </div>
 
             {/* Inventory Slider - Displayed beneath the project image */}
-            <div id="inventory-slider">
+            <div id="inventory-slider" className="" style={{
+              minHeight: '500px',
+              minWidth: '500px',
+              padding: '1rem 0'
+            }}>
               <InventorySlider projectId={projectId} />
             </div>
 

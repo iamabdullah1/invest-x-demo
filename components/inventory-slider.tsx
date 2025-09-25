@@ -48,6 +48,23 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
     fetchInventory()
   }, [projectId])
 
+  // Update items per view based on screen size
+  useEffect(() => {
+    const updateItemsPerView = () => {
+      if (window.innerWidth < 640) {
+        setItemsPerView(1)
+      } else if (window.innerWidth < 1024) {
+        setItemsPerView(2)
+      } else {
+        setItemsPerView(3)
+      }
+    }
+
+    updateItemsPerView()
+    window.addEventListener('resize', updateItemsPerView)
+    return () => window.removeEventListener('resize', updateItemsPerView)
+  }, [])
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -154,8 +171,8 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
       </CardHeader>
       <CardContent>
         <div className="relative">
-          <div className="grid gap-4" style={{ 
-            gridTemplateColumns: `repeat(${itemsPerView}, minmax(0, 1fr))`,
+          <div className="grid gap-6" style={{ 
+            gridTemplateColumns: `repeat(${itemsPerView}, minmax(300px, 1fr))`,
             minHeight: '400px'
           }}>
             {inventory.slice(currentIndex, currentIndex + itemsPerView).map((item) => (
