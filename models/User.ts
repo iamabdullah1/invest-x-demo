@@ -201,22 +201,22 @@ const userSchema = new Schema<IUser>({
     inventoryId: {
       type: String,
       ref: 'InventoryCategory',
-      required: true
+      required: [true, 'Inventory ID is required']
     },
     amount: {
       type: Number,
-      required: true,
-      min: 0
+      required: [true, 'Investment amount is required'],
+      min: [1000, 'Minimum investment amount is PKR 1,000']
     },
     sqft: {
       type: Number,
-      required: true,
-      min: 0
+      required: [true, 'Square feet is required'],
+      min: [1, 'Square feet must be at least 1']
     },
     pricePerSqFt: {
       type: Number,
-      required: true,
-      min: 0
+      required: [true, 'Price per square foot is required'],
+      min: [1, 'Price per square foot must be positive']
     },
     addedAt: {
       type: Date,

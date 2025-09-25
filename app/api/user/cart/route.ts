@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value
 
+    console.log('Cart GET - Token present:', !!token)
+
     if (!token) {
       return NextResponse.json({ 
         success: false, 
@@ -20,10 +22,15 @@ export async function GET(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any
     const userId = decoded.userId
 
+    console.log('Cart GET - Decoded userId:', userId)
+
     await connectDB()
     
     // Get user's cart
     const user = await User.findById(userId).select('cart')
+
+    console.log('Cart GET - User found:', !!user)
+    console.log('Cart GET - User cart:', user?.cart)
 
     if (!user) {
       return NextResponse.json({ 
@@ -34,21 +41,58 @@ export async function GET(request: NextRequest) {
 
     const cartItems = user.cart || []
 
+    console.log('Cart GET - Cart items count:', cartItems.length)
+    console.log('Cart GET - Cart items:', cartItems)
+
+    // Convert Mongoose subdocuments to plain objects
+    const plainCartItems = cartItems.map((item: any) => item.toObject ? item.toObject() : item)
+
+    console.log('Cart GET - Plain cart items:', plainCartItems)
+
     // Get full inventory details for cart items
-    const inventoryIds = cartItems.map((item: any) => item.inventoryId).filter(Boolean)
+    const inventoryIds = plainCartItems.map((item: any) => item.inventoryId).filter(Boolean)
+    console.log('Cart GET - Inventory IDs to fetch:', inventoryIds)
+    
     const inventories = await InventoryCategory.find({ 
       _id: { $in: inventoryIds }
     }).populate('projectId', 'title location city status')
 
+    console.log('Cart GET - Found inventories count:', inventories.length)
+    inventories.forEach((inv, index) => {
+      console.log(`Cart GET - Inventory ${index + 1}:`, {
+        _id: inv._id,
+        title: inv.title,
+        projectId: inv.projectId
+      })
+    })
+
     // Combine cart data with inventory details
-    const enrichedCart = cartItems.map((item: any) => {
+    const enrichedCart = plainCartItems.map((item: any) => {
       const inventory = inventories.find(i => i._id.toString() === item.inventoryId)
+      console.log(`Cart GET - Enriching item ${item.inventoryId}:`, {
+        foundInventory: !!inventory,
+        inventoryTitle: inventory?.title
+      })
+      
       return {
         ...item,
+        addedAt: item.addedAt.toISOString(), // Convert Date to string
         inventory: inventory || null,
-        project: inventory?.projectId || null
+        project: inventory?.projectId ? {
+          _id: inventory.projectId._id,
+          title: inventory.projectId.title,
+          location: {
+            city: inventory.projectId.city,
+            area: inventory.projectId.location // Using location as area
+          },
+          status: inventory.projectId.status
+        } : null,
+        isValid: !!inventory // Mark if inventory exists
       }
-    }).filter((item: any) => item.inventory) // Remove items for inventory that no longer exist
+    }) // Don't filter out invalid items, let frontend handle them
+
+    console.log('Cart GET - Enriched cart count:', enrichedCart.length)
+    console.log('Cart GET - Final response cart:', enrichedCart)
 
     return NextResponse.json({
       success: true,
@@ -81,7 +125,10 @@ export async function POST(request: NextRequest) {
 
     const { inventoryId, amount, sqft, pricePerSqFt } = await request.json()
 
+    console.log('Cart POST request data:', { inventoryId, amount, sqft, pricePerSqFt })
+
     if (!inventoryId || !amount || amount <= 0) {
+      console.log('Validation failed:', { inventoryId: !!inventoryId, amount, amountValid: amount > 0 })
       return NextResponse.json({ 
         success: false, 
         message: 'Inventory ID and valid amount are required' 
@@ -157,6 +204,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Save updated cart
+    console.log('Saving cart for user:', userId)
+    console.log('Cart data to save:', cart)
     await User.findByIdAndUpdate(userId, { cart })
 
     return NextResponse.json({
@@ -252,6 +301,98 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const inventoryId = searchParams.get('inventoryId')
+    const cleanupInvalid = searchParams.get('cleanupInvalid') === 'true'
+    const clearAll = searchParams.get('clearAll') === 'true'
+
+    await connectDB()
+
+    if (clearAll) {
+      // Clear all cart items completely
+      const user = await User.findById(userId)
+      if (!user) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'User not found' 
+        }, { status: 404 })
+      }
+
+      const clearedCount = user.cart.length
+      user.cart = []
+      await user.save()
+      
+      return NextResponse.json({
+        success: true,
+        message: `Cleared all ${clearedCount} cart items`
+      })
+    }
+
+    if (cleanupInvalid) {
+      // Clean up all invalid cart items (those without inventoryId, invalid data, or non-existent inventory)
+      const user = await User.findById(userId)
+      if (!user) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'User not found' 
+        }, { status: 404 })
+      }
+
+      console.log('Original cart items:', user.cart.length)
+      user.cart.forEach((item: any, index: number) => {
+        console.log(`Cart item ${index}:`, {
+          inventoryId: item.inventoryId,
+          amount: item.amount,
+          sqft: item.sqft,
+          pricePerSqFt: item.pricePerSqFt
+        })
+      })
+
+      // Get all inventory IDs from cart (filter out undefined/null)
+      const inventoryIds = user.cart
+        .map((item: any) => item.inventoryId)
+        .filter((id: any) => id && typeof id === 'string' && id.trim() !== '')
+
+      console.log('Valid inventory IDs found:', inventoryIds)
+
+      // Check which inventories actually exist
+      const existingInventories = await InventoryCategory.find({ 
+        _id: { $in: inventoryIds }
+      }).select('_id')
+
+      const existingInventoryIds = new Set(
+        existingInventories.map((inv: any) => inv._id.toString())
+      )
+
+      console.log('Existing inventory IDs:', Array.from(existingInventoryIds))
+
+      const originalLength = user.cart.length
+      user.cart = user.cart.filter((item: any) => {
+        const isValid = item.inventoryId && 
+          typeof item.inventoryId === 'string' && 
+          item.inventoryId.trim() !== '' &&
+          item.amount && 
+          typeof item.amount === 'number' &&
+          item.amount > 0 &&
+          item.sqft && 
+          typeof item.sqft === 'number' &&
+          item.sqft > 0 &&
+          item.pricePerSqFt &&
+          typeof item.pricePerSqFt === 'number' &&
+          item.pricePerSqFt > 0 &&
+          existingInventoryIds.has(item.inventoryId)
+        
+        console.log(`Item ${item.inventoryId || 'undefined'}: ${isValid ? 'KEEP' : 'REMOVE'}`)
+        return isValid
+      })
+      
+      await user.save()
+      
+      console.log(`Removed ${originalLength - user.cart.length} invalid items. Remaining: ${user.cart.length}`)
+      
+      return NextResponse.json({
+        success: true,
+        message: `Cleaned up ${originalLength - user.cart.length} invalid cart items. ${user.cart.length} items remaining.`
+      })
+    }
 
     if (!inventoryId) {
       return NextResponse.json({ 
@@ -259,8 +400,6 @@ export async function DELETE(request: NextRequest) {
         message: 'Inventory ID is required' 
       }, { status: 400 })
     }
-
-    await connectDB()
 
     // Remove from user's cart
     await User.findByIdAndUpdate(

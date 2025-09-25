@@ -119,9 +119,19 @@ export default function InventoryDetailPage() {
   const investment = calculateInvestment()
 
   const handleAddToCart = async () => {
-    if (!inventoryItem) return
+    console.log('handleAddToCart called')
+    console.log('inventoryItem:', inventoryItem)
+    console.log('investment:', investment)
+    console.log('investmentType:', investmentType)
+    console.log('investmentValue:', investmentValue)
+    
+    if (!inventoryItem) {
+      console.error('No inventory item found')
+      return
+    }
 
     const minAmount = inventoryItem.minSquareFeet * inventoryItem.pricePerSquareFoot
+    console.log('minAmount:', minAmount)
 
     if (investmentType === 'amount' && investment.amount < minAmount) {
       alert(`Minimum investment is ${formatPKR(minAmount)} (${inventoryItem.minSquareFeet} sq ft)`)
@@ -138,6 +148,13 @@ export default function InventoryDetailPage() {
       return
     }
 
+    console.log('Sending to cart API:', {
+      inventoryId: inventoryItem._id,
+      amount: investment.amount,
+      sqft: investment.sqft,
+      pricePerSqFt: inventoryItem.pricePerSquareFoot
+    })
+
     try {
       setInvesting(true)
       const response = await fetch('/api/user/cart', {
@@ -153,8 +170,11 @@ export default function InventoryDetailPage() {
         })
       })
 
+      console.log('Cart API response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Cart API response data:', data)
         if (data.success) {
           alert('Inventory added to cart successfully!')
           router.push('/cart')
@@ -162,6 +182,7 @@ export default function InventoryDetailPage() {
           alert(data.message || 'Failed to add to cart')
         }
       } else {
+        console.log('Cart API error response:', await response.text())
         alert('Failed to add to cart')
       }
     } catch (error) {
