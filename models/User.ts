@@ -43,8 +43,10 @@ export interface IUser extends Document {
   
   // Cart
   cart: Array<{
-    projectId: string;
+    inventoryId: string;
     amount: number;
+    sqft: number;
+    pricePerSqFt: number;
     addedAt: Date;
   }>;
   
@@ -196,12 +198,22 @@ const userSchema = new Schema<IUser>({
     ref: 'Project'
   }],
   cart: [{
-    projectId: {
+    inventoryId: {
       type: String,
-      ref: 'Project',
+      ref: 'InventoryCategory',
       required: true
     },
     amount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    sqft: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    pricePerSqFt: {
       type: Number,
       required: true,
       min: 0

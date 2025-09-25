@@ -188,12 +188,12 @@ export async function PUT(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as any
     const userId = decoded.userId
 
-    const { projectId, amount } = await request.json()
+    const { inventoryId, amount } = await request.json()
 
-    if (!projectId || !amount || amount <= 0) {
+    if (!inventoryId || !amount || amount <= 0) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Project ID and valid amount are required' 
+        message: 'Inventory ID and valid amount are required' 
       }, { status: 400 })
     }
 
@@ -203,7 +203,7 @@ export async function PUT(request: NextRequest) {
     const result = await User.findOneAndUpdate(
       { 
         _id: userId,
-        'cart.projectId': projectId 
+        'cart.inventoryId': inventoryId 
       },
       { 
         $set: { 
@@ -251,12 +251,12 @@ export async function DELETE(request: NextRequest) {
     const userId = decoded.userId
 
     const { searchParams } = new URL(request.url)
-    const projectId = searchParams.get('projectId')
+    const inventoryId = searchParams.get('inventoryId')
 
-    if (!projectId) {
+    if (!inventoryId) {
       return NextResponse.json({ 
         success: false, 
-        message: 'Project ID is required' 
+        message: 'Inventory ID is required' 
       }, { status: 400 })
     }
 
@@ -265,7 +265,7 @@ export async function DELETE(request: NextRequest) {
     // Remove from user's cart
     await User.findByIdAndUpdate(
       userId,
-      { $pull: { cart: { projectId: projectId } } }
+      { $pull: { cart: { inventoryId: inventoryId } } }
     )
 
     return NextResponse.json({

@@ -14,9 +14,23 @@ import Image from "next/image"
 import { formatPKR, validatePKRAmount, parsePKR } from "@/lib/currency"
 
 interface CartItem {
-  projectId: string
+  inventoryId: string
   amount: number
+  sqft: number
+  pricePerSqFt: number
   addedAt: string
+  inventory: {
+    _id: string
+    title: string
+    propertyType: string
+    propertySubType: string
+    totalArea: number
+    minSquareFeet: number
+    pricePerSquareFoot: number
+    inventoryImages?: string[]
+    area: string
+    city: string
+  }
   project: {
     _id: string
     title: string
@@ -24,12 +38,7 @@ interface CartItem {
       city: string
       area: string
     }
-    targetAmount: number
-    raisedAmount: number
-    expectedReturn: number
-    minInvestment: number
     status: string
-    images?: string[]
   }
 }
 
@@ -66,14 +75,14 @@ export default function CartPage() {
     }
   }
 
-  const updateCartItem = async (projectId: string, newAmount: number) => {
+  const updateCartItem = async (inventoryId: string, newAmount: number) => {
     try {
       const response = await fetch('/api/user/cart', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ projectId, amount: newAmount })
+        body: JSON.stringify({ inventoryId, amount: newAmount })
       })
 
       if (response.ok) {
@@ -81,7 +90,7 @@ export default function CartPage() {
         if (data.success) {
           // Update local state
           setCartItems(prev => prev.map(item => 
-            item.projectId === projectId 
+            item.inventoryId === inventoryId 
               ? { ...item, amount: newAmount }
               : item
           ))
@@ -97,9 +106,9 @@ export default function CartPage() {
     }
   }
 
-  const removeCartItem = async (projectId: string) => {
+  const removeCartItem = async (inventoryId: string) => {
     try {
-      const response = await fetch(`/api/user/cart?projectId=${projectId}`, {
+      const response = await fetch(`/api/user/cart?inventoryId=${inventoryId}`, {
         method: 'DELETE'
       })
 
@@ -107,7 +116,7 @@ export default function CartPage() {
         const data = await response.json()
         if (data.success) {
           // Update local state
-          setCartItems(prev => prev.filter(item => item.projectId !== projectId))
+          setCartItems(prev => prev.filter(item => item.inventoryId !== inventoryId))
         } else {
           alert(data.message || 'Failed to remove cart item')
         }
@@ -168,80 +177,74 @@ export default function CartPage() {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-6">
               {cartItems.map((item) => (
-                <Card key={item.projectId}>
+                <Card key={item.inventoryId}>
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
                       <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                         <img
-                          src={item.project.images?.[0] || "/placeholder.jpg"}
-                          alt={item.project.title}
+                          src={item.inventory.inventoryImages?.[0] || "/placeholder.jpg"}
+                          alt={item.inventory.title}
                           className="w-full h-full object-cover"
                         />
                       </div>
 
                       <div className="flex-1 space-y-4">
                         <div>
-                          <h3 className="font-semibold text-lg">{item.project.title}</h3>
+                          <h3 className="font-semibold text-lg">{item.inventory.title}</h3>
                           <p className="text-muted-foreground">
-                            {item.project.location?.area && item.project.location?.city 
-                              ? `${item.project.location.area}, ${item.project.location.city}`
-                              : item.project.location?.city || 'Location not specified'
-                            }
+                            {item.inventory.area}, {item.inventory.city} • {item.inventory.propertyType} • {item.inventory.propertySubType}
                           </p>
                           <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline">{item.project.expectedReturn}% Returns</Badge>
+                            <Badge variant="outline">{item.project.title}</Badge>
+                            <Badge variant="secondary">{item.sqft} sq ft</Badge>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium">Investment Amount</label>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 bg-transparent"
-                                onClick={() => updateCartItem(item.projectId, Math.max(item.project.minInvestment, item.amount - 1000))}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <Input
-                                type="number"
-                                value={item.amount}
-                                onChange={(e) => updateCartItem(item.projectId, Number(e.target.value))}
-                                className="text-center"
-                                min={item.project.minInvestment}
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 bg-transparent"
-                                onClick={() => updateCartItem(item.projectId, item.amount + 1000)}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateCartItem(item.inventoryId, Math.max(item.inventory.minSquareFeet * item.pricePerSqFt, item.amount - 1000))}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.amount}
+                              onChange={(e) => updateCartItem(item.inventoryId, Number(e.target.value))}
+                              className="w-24 text-center"
+                              min={item.inventory.minSquareFeet * item.pricePerSqFt}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateCartItem(item.inventoryId, item.amount + 1000)}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
                           </div>
-
-                          <div>
-                            <label className="text-sm font-medium">Projected Returns</label>
-                            <div className="text-lg font-semibold text-green-600 mt-1">
-                              {formatPKR(item.amount * (item.project.expectedReturn / 100))}
+                          <div className="text-right">
+                            <div className="font-semibold">{formatPKR(item.amount)}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {formatPKR(item.amount * 0.12)} projected returns
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-4 border-t">
-                          <div className="text-lg font-semibold">Total: {formatPKR(item.amount)}</div>
+                        <div className="flex justify-between items-center pt-4 border-t">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeCartItem(item.projectId)}
-                            className="text-red-600 hover:text-red-700"
+                            onClick={() => removeCartItem(item.inventoryId)}
+                            className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Remove
                           </Button>
+                          <div className="text-sm text-muted-foreground">
+                            Added {new Date(item.addedAt).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
                     </div>
