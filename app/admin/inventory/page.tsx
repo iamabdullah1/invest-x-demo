@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Package, MapPin, Building2, Eye, Edit, Plus, Search } from "lucide-react"
+import { ArrowLeft, Package, MapPin, Building2, Eye, Edit, Plus, Search, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { formatPKR } from "@/lib/currency"
@@ -38,6 +39,9 @@ interface InventoryItem {
 
 export default function AdminInventoryPage() {
   const { hasRole } = useAuth()
+  const searchParams = useSearchParams()
+  const projectIdFromParams = searchParams.get("projectId")
+  
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -46,17 +50,39 @@ export default function AdminInventoryPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [isAdmin, setIsAdmin] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [projectData, setProjectData] = useState<any>(null)
 
   useEffect(() => {
     setMounted(true)
     setIsAdmin(hasRole('admin'))
   }, [hasRole])
 
+  // Fetch project data when projectId is provided
+  useEffect(() => {
+    if (projectIdFromParams) {
+      fetchProjectData(projectIdFromParams)
+    }
+  }, [projectIdFromParams])
+
   useEffect(() => {
     if (isAdmin && mounted) {
       fetchInventory()
     }
-  }, [isAdmin, mounted, currentPage, searchTerm, propertyTypeFilter])
+  }, [isAdmin, mounted, currentPage, searchTerm, propertyTypeFilter, projectIdFromParams])
+
+  const fetchProjectData = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setProjectData(data.project)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching project data:", error)
+    }
+  }
 
   const fetchInventory = async () => {
     try {
@@ -65,7 +91,8 @@ export default function AdminInventoryPage() {
         page: currentPage.toString(),
         limit: '12',
         ...(searchTerm && { search: searchTerm }),
-        ...(propertyTypeFilter && propertyTypeFilter !== 'all' && { propertyType: propertyTypeFilter })
+        ...(propertyTypeFilter && propertyTypeFilter !== 'all' && { propertyType: propertyTypeFilter }),
+        ...(projectIdFromParams && { projectId: projectIdFromParams })
       })
 
       const response = await fetch(`/api/admin/inventory?${params}`)
@@ -127,16 +154,46 @@ export default function AdminInventoryPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Inventory Management</h1>
-            <p className="text-muted-foreground">Manage all property inventory items</p>
+            <h1 className="text-3xl font-bold">
+              {projectData ? `Inventory for ${projectData.title}` : 'Inventory Management'}
+            </h1>
+            <p className="text-muted-foreground">
+              {projectData ? `Manage inventory items for this project` : 'Manage all property inventory items'}
+            </p>
+            {projectData && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="outline" className="text-xs">
+                  Project: {projectData.title}
+                </Badge>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => window.location.href = '/admin/inventory'}
+                  className="text-xs h-6 px-2"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear Filter
+                </Button>
+              </div>
+            )}
           </div>
         </div>
-        <Link href="/inventory/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add New Inventory
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {projectData && (
+            <Link href={`/inventory/new?projectId=${projectData._id}`}>
+              <Button variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Add to Project
+              </Button>
+            </Link>
+          )}
+          <Link href="/inventory/new">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Inventory
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

@@ -342,9 +342,9 @@ export default function AdminProjectsPage() {
                   {/* Inventory Actions */}
                   <div className="pt-2 space-y-2">
                     <Button asChild variant="outline" size="sm" className="w-full">
-                      <Link href="/admin/inventory">
+                      <Link href={`/admin/inventory?projectId=${project._id}`}>
                         <Eye className="h-4 w-4 mr-2" />
-                        View All Inventory
+                        View Project Inventory
                       </Link>
                     </Button>
                     <Button asChild variant="outline" size="sm" className="w-full">

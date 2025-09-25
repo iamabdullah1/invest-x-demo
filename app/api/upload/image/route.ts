@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CloudinaryService } from '@/lib/cloudinary';
-
-const cloudinaryService = new CloudinaryService();
+import CloudinaryService from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,15 +35,8 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Upload to Cloudinary
-    const result = await cloudinaryService.uploadImage(buffer, {
-      folder,
-      format: 'jpg',
-      quality: 'auto',
-      width: 1200,
-      height: 800,
-      crop: 'limit'
-    });
+    // Upload to Cloudinary using the correct static method
+    const result = await CloudinaryService.uploadFile(buffer, `inventory_${Date.now()}`, folder);
 
     return NextResponse.json({
       success: true,

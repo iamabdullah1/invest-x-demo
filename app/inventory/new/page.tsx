@@ -6,6 +6,7 @@ import { RoleGuard } from "@/components/role-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Upload, X, Image as ImageIcon } from "lucide-react"
@@ -61,11 +62,13 @@ function AddInventoryCategoryForm() {
           // Pre-fill form with project data
           setFormData(prev => ({
             ...prev,
-            country: data.project.location?.country || "",
-            city: data.project.location?.city || "",
-            area: data.project.location?.area || "",
-            totalArea: data.project.area?.toString() || "",
-            pricePerSquareFoot: data.project.pricePerSqFt?.toString() || "",
+            country: "Pakistan", // Default country
+            city: data.project.city || "",
+            area: data.project.location || "",
+            propertyType: data.project.type === 'residential' ? 'Residential' : 
+                         data.project.type === 'commercial' ? 'Commercial' : 'Residential',
+            propertySubType: data.project.type === 'mixed' ? 'Mixed Use' : 
+                           data.project.type === 'residential' ? 'Apartment' : 'Office',
           }))
         }
       }
@@ -251,7 +254,10 @@ function AddInventoryCategoryForm() {
 
         <Card className="max-w-4xl mx-auto">
           <CardHeader>
-            <CardTitle>Inventory Details</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Inventory Details</CardTitle>
+              
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -262,6 +268,7 @@ function AddInventoryCategoryForm() {
                   <Select
                     value={formData.projectId}
                     onValueChange={(value) => handleInputChange("projectId", value)}
+                    disabled={!!projectIdFromParams}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a project" />
@@ -274,6 +281,11 @@ function AddInventoryCategoryForm() {
                       )}
                     </SelectContent>
                   </Select>
+                  {projectIdFromParams && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Project selected from URL parameter
+                    </p>
+                  )}
                   {errors.projectId && (
                     <p className="text-sm text-red-600 mt-1">{errors.projectId}</p>
                   )}
@@ -336,11 +348,13 @@ function AddInventoryCategoryForm() {
                 </div>
                 <div>
                   <Label htmlFor="description">Description *</Label>
-                  <Input
+                  <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => handleInputChange("description", e.target.value)}
-                    placeholder="Brief description of the property"
+                    placeholder="Detailed description of the property including features, amenities, and investment opportunity..."
+                    rows={6}
+                    className="resize-none"
                   />
                   {errors.description && (
                     <p className="text-sm text-red-600 mt-1">{errors.description}</p>

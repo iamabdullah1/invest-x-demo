@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import { InventoryCategory } from '@/models';
+import JWTAuthService from '@/lib/jwtAuth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -59,6 +60,106 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching inventory:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch inventory' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Authenticate and authorize admin user
+    const { user, error: authError } = await JWTAuthService.requireRole(request, 'admin');
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: authError || 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
+
+    const body = await request.json();
+    const {
+      projectId,
+      country,
+      city,
+      area,
+      title,
+      description,
+      propertyType,
+      propertySubType,
+      totalArea,
+      minSquareFeet,
+      pricePerSquareFoot,
+      inventoryImages
+    } = body;
+
+    // Validate required fields
+    if (!projectId || !country || !city || !area || !title || !description ||
+        !propertyType || !propertySubType || !totalArea || !minSquareFeet || !pricePerSquareFoot) {
+      return NextResponse.json(
+        { success: false, error: 'All required fields must be provided' },
+        { status: 400 }
+      );
+    }
+
+    // Validate numeric fields
+    if (isNaN(totalArea) || isNaN(minSquareFeet) || isNaN(pricePerSquareFoot)) {
+      return NextResponse.json(
+        { success: false, error: 'Numeric fields must be valid numbers' },
+        { status: 400 }
+      );
+    }
+
+    // Validate propertyType and propertySubType enums
+    const validPropertyTypes = ['Residential', 'Commercial', 'Mixed'];
+    const validPropertySubTypes = ['Apartment', 'Villa', 'Shop', 'Office', 'Plot'];
+
+    if (!validPropertyTypes.includes(propertyType)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid property type' },
+        { status: 400 }
+      );
+    }
+
+    if (!validPropertySubTypes.includes(propertySubType)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid property sub-type' },
+        { status: 400 }
+      );
+    }
+
+    // Create new inventory category
+    const inventoryCategory = new InventoryCategory({
+      projectId,
+      country,
+      city,
+      area,
+      title,
+      description,
+      propertyType,
+      propertySubType,
+      totalArea: Number(totalArea),
+      minSquareFeet: Number(minSquareFeet),
+      pricePerSquareFoot: Number(pricePerSquareFoot),
+      inventoryImages: inventoryImages || []
+    });
+
+    await inventoryCategory.save();
+
+    // Populate project information for response
+    await inventoryCategory.populate('projectId', 'title location');
+
+    return NextResponse.json({
+      success: true,
+      inventory: inventoryCategory,
+      message: 'Inventory category created successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Error creating inventory category:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to create inventory category' },
       { status: 500 }
     );
   }
