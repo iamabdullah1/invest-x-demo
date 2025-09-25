@@ -144,14 +144,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         setUser(data.user);
-        // Handle role-based redirect
-        if (data.user.role === 'admin') {
-          router.push('/admin');
-        } else if (data.user.role === 'investor') {
-          window.location.href = '/dashboard';
-        } else if (data.user.role === 'guest') {
-          window.location.href = '/guest-dashboard';
+        
+        // Clear any cached data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('investx-role');
+          localStorage.removeItem('user-data');
         }
+        
+        // Refresh user data to ensure consistency
+        await refreshUser();
+        
+        // Handle role-based redirect with a small delay to ensure state is updated
+        setTimeout(() => {
+          if (data.user.role === 'admin') {
+            window.location.href = '/admin';
+          } else if (data.user.role === 'investor') {
+            window.location.href = '/dashboard';
+          } else if (data.user.role === 'guest') {
+            window.location.href = '/guest-dashboard';
+          }
+        }, 100);
+        
         return { success: true };
       } else {
         setError(data.error);
