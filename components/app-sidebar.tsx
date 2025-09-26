@@ -172,12 +172,8 @@ export function AppSidebar() {
       return filterItemsByRole(navItems)
     }
 
-    if (currentRole === "admin" && isInAdminSection) {
-      return [] // No regular navigation items in admin section
-    }
-
-    if (currentRole === "admin" && !isInAdminSection) {
-      return filterItemsByRole(navItems)
+    if (currentRole === "admin") {
+      return [] // Admins only see admin items, never regular navigation
     }
 
     return filterItemsByRole(navItems)

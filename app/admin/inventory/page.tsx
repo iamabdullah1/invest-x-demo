@@ -252,7 +252,7 @@ export default function AdminInventoryPage() {
             <p className="text-muted-foreground text-center mb-4">
               {searchTerm || propertyTypeFilter ? 'No inventory matches your filters.' : 'No inventory items have been added yet.'}
             </p>
-            <Link href="/inventory/new">
+            <Link href={`/inventory/new?projectId=${projectData._id}`}>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 Add First Inventory Item
