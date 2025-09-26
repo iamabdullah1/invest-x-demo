@@ -19,6 +19,7 @@ export interface User {
   portfolioValue: number;
   joinDate: string;
   lastLogin?: string;
+  verificationStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   notifications: {
     email: boolean;
     sms: boolean;

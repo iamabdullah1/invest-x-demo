@@ -10,6 +10,11 @@ export interface IProject extends Document {
   type: 'residential' | 'commercial' | 'mixed';
   status: 'draft' | 'active' | 'funded' | 'completed' | 'cancelled';
   
+  // Financial fields
+  targetAmount: number;
+  raisedAmount: number;
+  expectedReturn: number; // Annual return percentage
+  
   // Project timeline
   startDate: Date;
   endDate: Date;
@@ -128,6 +133,22 @@ const projectSchema = new Schema<IProject>({
   fundingDeadline: {
     type: Date,
     required: [true, 'Funding deadline is required']
+  },
+  targetAmount: {
+    type: Number,
+    required: [true, 'Target amount is required'],
+    min: [0, 'Target amount cannot be negative']
+  },
+  raisedAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Raised amount cannot be negative']
+  },
+  expectedReturn: {
+    type: Number,
+    required: [true, 'Expected return is required'],
+    min: [0, 'Expected return cannot be negative'],
+    max: [100, 'Expected return cannot exceed 100%']
   },
   images: [{
     type: String,
