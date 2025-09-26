@@ -193,22 +193,7 @@ export default function AdminInventoryPage() {
             <p className="text-muted-foreground">
               {projectData ? `Manage inventory items for this project` : 'Manage all property inventory items'}
             </p>
-            {projectData && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-xs">
-                  Project: {projectData.title}
-                </Badge>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => window.location.href = '/admin/inventory'}
-                  className="text-xs h-6 px-2"
-                >
-                  <X className="w-3 h-3 mr-1" />
-                  Clear Filter
-                </Button>
-              </div>
-            )}
+           
           </div>
         </div>
         <div className="flex gap-2">
