@@ -115,18 +115,7 @@ export default function LoginPage(): React.JSX.Element {
             </Link>
           </div>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <h4 className="text-sm font-medium mb-2">Demo Credentials:</h4>
-            <div className="text-xs space-y-1 text-muted-foreground">
-              <div>
-                <strong>Investor:</strong> ahmed@example.com / investor123
-              </div>
-              <div>
-                <strong>Admin:</strong> sarah@investx.com / admin123
-              </div>
-            </div>
-          </div>
+         
         </CardContent>
       </Card>
     </div>
