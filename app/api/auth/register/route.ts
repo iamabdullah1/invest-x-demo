@@ -62,9 +62,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Password will be hashed automatically by the User model pre-save hook
+    // No manual hashing needed here to avoid double hashing
 
     // Create new user
     const newUser = new User({
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest) {
       lastName: lastName.trim(),
       email: email.toLowerCase().trim(),
       phone: phone?.trim(),
-      password: hashedPassword,
+      password: password, // Pass plain password - model will hash it
       role: role, // Use the selected role (guest or investor)
       isEmailVerified: isEmailVerified, // Set verification status
       isActive: true

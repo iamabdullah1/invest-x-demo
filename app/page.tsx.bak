@@ -1,0 +1,426 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
+import { LandingPage } from "@/components/landing-page"
+
+export default function HomePage() {
+  const { user } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      router.replace('/admin')
+    }
+  }, [user, router])
+
+  return <LandingPage />
+}
+        <div className="relative text-center space-y-8">
+          <div className="space-y-6">
+            <Badge variant="secondary" className="text-sm px-4 py-2">
+              🇵🇰 Pakistan's Leading Real Estate Investment Platform
+            </Badge>
+            <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+              Invest in Pakistan's
+              <span className="text-primary block"> Real Estate Future</span>
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-4xl mx-auto leading-relaxed">
+              Discover premium real estate investment opportunities across Pakistan's major cities. From luxury
+              residential complexes in Karachi to commercial developments in Lahore and Islamabad. Start with as little
+              as PKR 50,000.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button asChild size="lg" className="text-lg px-8 py-6">
+              <Link href="/projects">
+                Explore Projects <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-transparent" asChild>
+              <Link href="/auth/signup">Start Investing Today</Link>
+            </Button>
+          </div>
+          <div className="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground pt-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              No Hidden Fees
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              Shariah Compliant
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              Regulated Platform
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader>
+            <Building2 className="h-8 w-8 text-primary" />
+            <CardTitle>Premium Projects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>Carefully vetted real estate projects across major Pakistani cities</CardDescription>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <TrendingUp className="h-8 w-8 text-primary" />
+            <CardTitle>High Returns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>Target returns of 15-25% annually on your real estate investments</CardDescription>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Shield className="h-8 w-8 text-primary" />
+            <CardTitle>Secure Platform</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>Bank-grade security and transparent investment processes</CardDescription>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Users className="h-8 w-8 text-primary" />
+            <CardTitle>Expert Support</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>Dedicated investment advisors to guide your portfolio growth</CardDescription>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-8">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold text-foreground">Featured Investment Opportunities</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Handpicked projects with the highest potential returns and lowest risk profiles
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="h-48 bg-[url('/luxury-residential-karachi.png')] bg-cover bg-center" />
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">Marina Heights Karachi</CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    DHA Phase 8, Karachi
+                  </CardDescription>
+                </div>
+                <Badge variant="secondary">22% IRR</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Min Investment</span>
+                  <span className="font-medium">PKR 500,000</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Project Value</span>
+                  <span className="font-medium">PKR 2.5B</span>
+                </div>
+                <Button className="w-full bg-transparent" variant="outline">
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="h-48 bg-[url('/commercial-plaza-lahore.png')] bg-cover bg-center" />
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">Business Bay Lahore</CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    Gulberg III, Lahore
+                  </CardDescription>
+                </div>
+                <Badge variant="secondary">18% IRR</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Min Investment</span>
+                  <span className="font-medium">PKR 300,000</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Project Value</span>
+                  <span className="font-medium">PKR 1.8B</span>
+                </div>
+                <Button className="w-full bg-transparent" variant="outline">
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="h-48 bg-[url('/modern-apartments-islamabad.png')] bg-cover bg-center" />
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">Capital Residency</CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    F-11, Islamabad
+                  </CardDescription>
+                </div>
+                <Badge variant="secondary">20% IRR</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Min Investment</span>
+                  <span className="font-medium">PKR 750,000</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Project Value</span>
+                  <span className="font-medium">PKR 3.2B</span>
+                </div>
+                <Button className="w-full bg-transparent" variant="outline">
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section className="bg-muted/50 rounded-3xl p-8 md:p-12 space-y-8">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold text-foreground">How InvestX Works</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Start your real estate investment journey in just three simple steps
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-2xl font-bold text-primary">1</span>
+            </div>
+            <h3 className="text-xl font-semibold">Browse & Select</h3>
+            <p className="text-muted-foreground">
+              Explore our curated selection of high-potential real estate projects across Pakistan
+            </p>
+          </div>
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-2xl font-bold text-primary">2</span>
+            </div>
+            <h3 className="text-xl font-semibold">Invest Securely</h3>
+            <p className="text-muted-foreground">
+              Choose your investment amount and complete the secure transaction process
+            </p>
+          </div>
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-2xl font-bold text-primary">3</span>
+            </div>
+            <h3 className="text-xl font-semibold">Track & Earn</h3>
+            <p className="text-muted-foreground">
+              Monitor your investments and receive returns as projects develop and appreciate
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-gradient-to-r from-primary to-primary/80 rounded-3xl p-8 md:p-12 text-white">
+        <div className="text-center space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-3xl font-bold">Trusted by Thousands of Investors</h2>
+            <p className="text-primary-foreground/80 text-lg max-w-2xl mx-auto">
+              Join Pakistan's fastest-growing real estate investment community
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="text-4xl font-bold">PKR 2.5B+</div>
+              <div className="text-primary-foreground/80">Total Investments</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold">150+</div>
+              <div className="text-primary-foreground/80">Active Projects</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold">5,000+</div>
+              <div className="text-primary-foreground/80">Happy Investors</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold">22%</div>
+              <div className="text-primary-foreground/80">Avg. Annual Returns</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-8">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold text-foreground">What Our Investors Say</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Real stories from real investors who've grown their wealth with InvestX
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <span className="font-semibold text-primary">AH</span>
+                </div>
+                <div>
+                  <CardTitle className="text-base">Ahmed Hassan</CardTitle>
+                  <CardDescription>Software Engineer, Karachi</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                "InvestX made real estate investing accessible for someone like me. I started with PKR 100,000 and have
+                seen consistent returns. The platform is transparent and professional."
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <span className="font-semibold text-primary">SK</span>
+                </div>
+                <div>
+                  <CardTitle className="text-base">Sarah Khan</CardTitle>
+                  <CardDescription>Doctor, Lahore</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                "As a busy professional, I appreciate how easy it is to track my investments. The returns have been
+                better than traditional savings accounts."
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <span className="font-semibold text-primary">MA</span>
+                </div>
+                <div>
+                  <CardTitle className="text-base">Muhammad Ali</CardTitle>
+                  <CardDescription>Business Owner, Islamabad</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                "I've diversified my portfolio across multiple projects through InvestX. The team's expertise and
+                project selection has been excellent."
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section className="bg-muted/30 rounded-3xl p-8 md:p-12 space-y-8">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold text-foreground">Calculate Your Potential Returns</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            See how your investment could grow over time with our interactive calculator
+          </p>
+        </div>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Investment Calculator
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Investment Amount</label>
+                  <Input placeholder="PKR 500,000" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Investment Period</label>
+                  <Input placeholder="24 months" />
+                </div>
+              </div>
+              <div className="bg-primary/5 rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Projected Returns (20% IRR)</span>
+                  <span className="text-2xl font-bold text-primary">PKR 600,000</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total Profit</span>
+                  <span className="text-xl font-semibold text-green-600">PKR 100,000</span>
+                </div>
+              </div>
+              <Button className="w-full" asChild>
+                <Link href="/projects">Start Investing Now</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <section className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-3xl p-8 md:p-12">
+        <div className="max-w-2xl mx-auto text-center space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-3xl font-bold text-foreground">Stay Updated</h2>
+            <p className="text-lg text-muted-foreground">
+              Get the latest investment opportunities and market insights delivered to your inbox
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+            <Input placeholder="Enter your email address" className="flex-1" />
+            <Button className="sm:w-auto">
+              <Mail className="h-4 w-4 mr-2" />
+              Subscribe
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Join 10,000+ investors receiving weekly market updates. Unsubscribe anytime.
+          </p>
+        </div>
+      </section>
+    </div>
+  )
+}

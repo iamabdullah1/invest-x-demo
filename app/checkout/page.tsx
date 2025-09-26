@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { CreditCard, Building2, Shield, CheckCircle, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { formatCurrency } from "@/lib/mockData"
+import { formatPKR } from "@/lib/currency"
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -50,7 +50,7 @@ export default function CheckoutPage() {
           <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
           <h1 className="text-3xl font-bold mb-4">Investment Successful!</h1>
           <p className="text-muted-foreground mb-6">
-            Your investment of {formatCurrency(finalTotal)} has been processed successfully. You will receive a
+            Your investment of {formatPKR(finalTotal)} has been processed successfully. You will receive a
             confirmation email shortly.
           </p>
           <div className="space-y-4">
@@ -234,11 +234,11 @@ export default function CheckoutPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Investment Amount</span>
-                    <span className="font-medium">{formatCurrency(orderTotal)}</span>
+                    <span className="font-medium">{formatPKR(orderTotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Processing Fee (1%)</span>
-                    <span className="font-medium">{formatCurrency(processingFee)}</span>
+                    <span className="font-medium">{formatPKR(processingFee)}</span>
                   </div>
                 </div>
 
@@ -246,7 +246,7 @@ export default function CheckoutPage() {
 
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total Amount</span>
-                  <span>{formatCurrency(finalTotal)}</span>
+                  <span>{formatPKR(finalTotal)}</span>
                 </div>
 
                 <div className="flex items-center space-x-2">

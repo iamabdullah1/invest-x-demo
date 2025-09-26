@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
 import {
   Home,
   Building2,
@@ -21,6 +21,7 @@ import {
   Heart,
   Sparkles,
   GitCompare,
+  FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type UserRole, getRole } from "@/lib/mockAuth"
@@ -40,52 +41,58 @@ const navItems: NavItem[] = [
     roles: ["investor", "admin"],
   },
   {
+    title: "Guest Dashboard",
+    href: "/guest-dashboard",
+    icon: Home,
+    roles: ["guest"],
+  },
+  {
     title: "Projects",
     href: "/projects",
     icon: Building2,
-    roles: ["guest", "investor", "admin"],
+    roles: ["guest", "investor", ],
   },
   {
     title: "Recommendations",
     href: "/recommendations",
     icon: Sparkles,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Compare",
     href: "/compare",
     icon: GitCompare,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Wishlist",
     href: "/wishlist",
     icon: Heart,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Cart",
     href: "/cart",
     icon: ShoppingCart,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Checkout",
     href: "/checkout",
     icon: CreditCard,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Portfolio",
     href: "/portfolio",
     icon: Briefcase,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
   {
     title: "Notifications",
     href: "/notifications",
     icon: Bell,
-    roles: ["investor", "admin"],
+    roles: ["investor"],
   },
 ]
 
@@ -94,13 +101,13 @@ const authItems: NavItem[] = [
     title: "Login",
     href: "/auth/login",
     icon: LogIn,
-    roles: ["guest"],
+    roles: ["guest"], // Only for unauthenticated users
   },
   {
     title: "Sign Up",
     href: "/auth/signup",
     icon: UserPlus,
-    roles: ["guest"],
+    roles: ["guest"], // Only for unauthenticated users
   },
 ]
 
@@ -130,6 +137,12 @@ const adminItems: NavItem[] = [
     roles: ["admin"],
   },
   {
+    title: "Verification Requests",
+    href: "/admin/verification-requests",
+    icon: FileText,
+    roles: ["admin"],
+  },
+  {
     title: "Analytics",
     href: "/admin/analytics",
     icon: BarChart3,
@@ -144,12 +157,9 @@ const adminItems: NavItem[] = [
 ]
 
 export function AppSidebar() {
-  const [currentRole, setCurrentRole] = useState<UserRole>("guest")
+  const { user, isAuthenticated } = useAuth()
   const pathname = usePathname()
-
-  useEffect(() => {
-    setCurrentRole(getRole())
-  }, [])
+  const currentRole = user?.role || "guest"
 
   const isInAdminSection = pathname.startsWith("/admin")
 
@@ -218,11 +228,11 @@ export function AppSidebar() {
           </div>
         )}
 
-        {/* Auth Items (for guests) */}
-        {currentRole === "guest" && (
+        {/* Auth Items (only for unauthenticated users) */}
+        {!isAuthenticated && (
           <div className="pt-4 border-t border-sidebar-border">
             <div className="space-y-1">
-              {filterItemsByRole(authItems).map((item) => {
+              {authItems.map((item) => {
                 const Icon = item.icon
                 return (
                   <Link

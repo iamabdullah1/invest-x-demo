@@ -15,26 +15,25 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/hooks/useAuth"
+import { useNotifications } from "@/hooks/useNotifications"
+import Link from "next/link"
 
 export function AppHeader() {
   const { user, logout, isAuthenticated, loading } = useAuth()
   const { theme, setTheme } = useTheme()
+  const { unreadCount, loading: notificationsLoading } = useNotifications()
+  const [mounted, setMounted] = useState(false)
 
-  // Log role information whenever user state changes
-  console.log('🎨 Header render - User state:', {
-    isAuthenticated,
-    loading,
-    userRole: user?.role,
-    userName: user ? `${user.firstName} ${user.lastName}` : 'Not logged in'
-  });
+  // Prevent hydration mismatch with theme
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogout = async () => {
     try {
-      console.log('🚪 Logging out user:', user?.email);
       await logout()
-      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('❌ Logout failed:', error)
+      // Handle logout error silently or with toast notification
     }
   }
 
@@ -68,21 +67,27 @@ export function AppHeader() {
 
       <div className="flex items-center space-x-4">
         {/* Theme Toggle */}
-        <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+        {mounted && (
+          <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+        )}
 
         {/* Notifications */}
         {isAuthenticated && user?.role !== "guest" && (
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-4 w-4" />
-            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs">
-              3
-            </Badge>
-            <span className="sr-only">Notifications</span>
-          </Button>
+          <Link href="/notifications">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-4 w-4" />
+              {!notificationsLoading && unreadCount > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
+              <span className="sr-only">Notifications</span>
+            </Button>
+          </Link>
         )}
 
         {/* User Menu */}

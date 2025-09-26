@@ -37,8 +37,6 @@ export class JWTAuthService {
       lastName: user.lastName
     };
 
-    console.log(`🔐 JWT Token Generated - User: ${user.email}, Role: ${user.role}`);
-
     return jwt.sign(payload, this.JWT_SECRET, {
       expiresIn: this.JWT_EXPIRES_IN
     } as jwt.SignOptions);

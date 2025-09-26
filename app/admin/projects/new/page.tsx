@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Upload, Plus, X } from "lucide-react"
+import { ArrowLeft, Upload, Plus, X, Image as ImageIcon } from "lucide-react"
 import Link from "next/link"
 
 export default function AddProjectPage() {
@@ -19,18 +19,14 @@ export default function AddProjectPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [amenities, setAmenities] = useState<string[]>([])
   const [newAmenity, setNewAmenity] = useState("")
+  const [selectedImages, setSelectedImages] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
     title: "",
     location: "",
     city: "",
     type: "",
-    targetAmount: "",
-    minInvestment: "",
-    expectedReturn: "",
-    duration: "",
-    area: "",
-    pricePerSqFt: "",
     description: "",
     developer: "",
     riskLevel: "",
@@ -53,15 +49,96 @@ export default function AddProjectPage() {
     setAmenities((prev) => prev.filter((a) => a !== amenity))
   }
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isImage = file.type.startsWith('image/')
+      const isValidSize = file.size <= 10 * 1024 * 1024 // 10MB
+      return isImage && isValidSize
+    })
+
+    if (validFiles.length !== files.length) {
+      alert('Some files were skipped. Please upload only images under 10MB.')
+    }
+
+    // Update selected images (limit to 5 images)
+    const newImages = [...selectedImages, ...validFiles].slice(0, 5)
+    setSelectedImages(newImages)
+
+    // Create previews
+    const newPreviews = validFiles.map(file => URL.createObjectURL(file))
+    const allPreviews = [...imagePreviews, ...newPreviews].slice(0, 5)
+    setImagePreviews(allPreviews)
+  }
+
+  const removeImage = (index: number) => {
+    const newImages = selectedImages.filter((_, i) => i !== index)
+    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    
+    // Revoke the URL to prevent memory leaks
+    URL.revokeObjectURL(imagePreviews[index])
+    
+    setSelectedImages(newImages)
+    setImagePreviews(newPreviews)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.location || 
+          !formData.city || !formData.type || !formData.developer) {
+        alert('Please fill in all required fields')
+        setIsSubmitting(false)
+        return
+      }
 
-    // Redirect to projects page
-    router.push("/admin/projects")
+      // Create FormData for file upload
+      const submitFormData = new FormData()
+      
+      // Add form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        submitFormData.append(key, value)
+      })
+      
+      // Add amenities as JSON
+      submitFormData.append('amenities', JSON.stringify(amenities))
+      
+      // Add images
+      selectedImages.forEach((image, index) => {
+        submitFormData.append(`images_${index}`, image)
+      })
+
+      console.log('Submitting project data...')
+      
+      // Submit to API
+      const response = await fetch('/api/admin/projects', {
+        method: 'POST',
+        body: submitFormData,
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log('Project created successfully:', result.project)
+        alert('Project created successfully!')
+        router.push('/admin/projects')
+      } else {
+        console.error('Project creation failed:', result.error)
+        alert(`Failed to create project: ${result.error}`)
+      }
+
+    } catch (error) {
+      console.error('Error submitting project:', error)
+      alert('An error occurred while creating the project. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -183,89 +260,6 @@ export default function AddProjectPage() {
             </CardContent>
           </Card>
 
-          {/* Financial Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="targetAmount">Target Amount (PKR)</Label>
-                  <Input
-                    id="targetAmount"
-                    type="number"
-                    placeholder="500000000"
-                    value={formData.targetAmount}
-                    onChange={(e) => handleInputChange("targetAmount", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minInvestment">Minimum Investment (PKR)</Label>
-                  <Input
-                    id="minInvestment"
-                    type="number"
-                    placeholder="1000000"
-                    value={formData.minInvestment}
-                    onChange={(e) => handleInputChange("minInvestment", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="expectedReturn">Expected Return (%)</Label>
-                  <Input
-                    id="expectedReturn"
-                    type="number"
-                    placeholder="22"
-                    value={formData.expectedReturn}
-                    onChange={(e) => handleInputChange("expectedReturn", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (months)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    placeholder="24"
-                    value={formData.duration}
-                    onChange={(e) => handleInputChange("duration", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="area">Total Area (sq ft)</Label>
-                  <Input
-                    id="area"
-                    type="number"
-                    placeholder="150000"
-                    value={formData.area}
-                    onChange={(e) => handleInputChange("area", e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pricePerSqFt">Price per sq ft (PKR)</Label>
-                  <Input
-                    id="pricePerSqFt"
-                    type="number"
-                    placeholder="3333"
-                    value={formData.pricePerSqFt}
-                    onChange={(e) => handleInputChange("pricePerSqFt", e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Timeline */}
           <Card>
             <CardHeader>
@@ -338,15 +332,63 @@ export default function AddProjectPage() {
             <CardHeader>
               <CardTitle>Project Images</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
                 <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-2">Upload project images</p>
-                <p className="text-sm text-muted-foreground">PNG, JPG up to 10MB each</p>
-                <Button type="button" variant="outline" className="mt-4 bg-transparent">
-                  Choose Files
-                </Button>
+                <p className="text-sm text-muted-foreground">PNG, JPG up to 10MB each (Max 5 images)</p>
+                <div className="mt-4">
+                  <input
+                    type="file"
+                    id="projectImages"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => document.getElementById('projectImages')?.click()}
+                    disabled={selectedImages.length >= 5}
+                  >
+                    Choose Files
+                  </Button>
+                </div>
               </div>
+              
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        {selectedImages[index]?.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {selectedImages.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedImages.length} of 5 images selected
+                </p>
+              )}
             </CardContent>
           </Card>
 

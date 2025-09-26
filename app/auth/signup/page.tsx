@@ -67,8 +67,6 @@ export default function SignupPage() {
     setIsLoading(true)
 
     try {
-      console.log(`📝 Signup Form - Email: ${formData.email}, Role: guest`);
-      
       // First send OTP for email verification
       const response = await fetch('/api/auth/otp/send', {
         method: 'POST',
@@ -87,7 +85,6 @@ export default function SignupPage() {
         // Store signup data temporarily in sessionStorage with guest role
         const signupDataWithRole = { ...formData, role: "guest" };
         sessionStorage.setItem('signupData', JSON.stringify(signupDataWithRole))
-        console.log(`💾 Stored signup data with role: guest`);
         
         // Redirect to OTP verification with signup type
         router.push(`/auth/verify-otp?sessionId=${data.sessionId}&email=${encodeURIComponent(formData.email)}&type=signup`)

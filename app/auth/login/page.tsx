@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Building2, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 
-export default function LoginPage() {
+export default function LoginPage(): React.JSX.Element {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -27,23 +27,16 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-    console.log('🔐 Login attempt with:', { email, password: '***' });
-
     try {
       const result = await login(email, password)
-      console.log('📊 Login result:', result);
 
       if (result.success) {
-        console.log('🎉 Login successful! Redirecting to dashboard...');
-        // The useAuth hook handles setting user state
-        // Redirect will happen after auth context updates
-        router.push('/dashboard')
+        // The useAuth hook handles role-based redirects automatically
+        // No need for manual redirect here as useAuth will handle it
       } else {
-        console.log('❌ Login failed:', result.error);
         setError(result.error || 'Login failed')
       }
     } catch (error) {
-      console.error('💥 Login error:', error);
       setError('Failed to login. Please try again.')
     } finally {
       setIsLoading(false)

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Logout API called');
+    
     // Create response
     const response = NextResponse.json({
       success: true,
@@ -17,6 +19,16 @@ export async function POST(request: NextRequest) {
       path: '/'
     });
 
+    // Clear mock auth session
+    response.cookies.set('mock-auth-session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0, // Expire immediately
+      path: '/'
+    });
+
+    console.log('Logout successful, cookies cleared');
     return response;
 
   } catch (error: any) {

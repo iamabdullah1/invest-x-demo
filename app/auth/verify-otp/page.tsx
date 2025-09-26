@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +10,19 @@ import { Building2, Mail, Clock, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 
-export default function OTPVerificationPage() {
+// Force dynamic rendering - this page cannot be prerendered
+export const dynamic = 'force-dynamic'
+
+function OTPVerificationWrapper() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get('sessionId')
+  const email = searchParams.get('email')
+  const type = searchParams.get('type')
+
+  return <OTPVerificationContent sessionId={sessionId} email={email} type={type} />
+}
+
+function OTPVerificationContent({ sessionId, email, type }: { sessionId: string | null, email: string | null, type: string | null }) {
   const [otp, setOtp] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
@@ -18,13 +30,9 @@ export default function OTPVerificationPage() {
   const [success, setSuccess] = useState("")
   const [timeLeft, setTimeLeft] = useState(300) // 5 minutes
   const [canResend, setCanResend] = useState(false)
-  
+
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { refreshUser } = useAuth()
-  const sessionId = searchParams.get('sessionId')
-  const email = searchParams.get('email')
-  const type = searchParams.get('type') // 'signup'
 
   // Countdown timer
   useEffect(() => {
@@ -82,9 +90,6 @@ export default function OTPVerificationPage() {
             try {
               const userData = JSON.parse(signupData)
               
-              console.log(`🔍 OTP Verification - Signup Data:`, userData);
-              console.log(`📝 Role in signup data: ${userData.role}`);
-              
               // Call register API to create user
               const registerResponse = await fetch('/api/auth/register', {
                 method: 'POST',
@@ -106,9 +111,9 @@ export default function OTPVerificationPage() {
                 // Refresh user context to get the new user state
                 await refreshUser()
                 
-                // All new signups are guests, redirect to home
+                // All new signups are guests, redirect to projects
                 setTimeout(() => {
-                  router.push('/') // guest users go to home
+                  router.push('/projects') // guest users go to projects
                 }, 1500)
               } else {
                 setError(registerData.error || 'Failed to create account')
@@ -297,5 +302,13 @@ export default function OTPVerificationPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function OTPVerificationPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OTPVerificationWrapper />
+    </Suspense>
   )
 }

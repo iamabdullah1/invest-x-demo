@@ -1,5 +1,6 @@
 // Simple script to test database seeding
 import { DatabaseService } from './database';
+import InventoryCategory from './models/InventoryCategory';
 
 async function seedUsers() {
   try {

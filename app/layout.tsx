@@ -1,11 +1,10 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AppShell } from "@/components/app-shell"
 import { AuthProvider } from "@/hooks/useAuth"
+import { ConditionalLayout } from "@/components/conditional-layout"
 
 export const metadata: Metadata = {
   title: "InvestX - Real Estate Investment Platform",
@@ -20,19 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
-      </head>
-      <body>
+      <body className="font-sans" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <AppShell>{children}</AppShell>
+            <ConditionalLayout>{children}</ConditionalLayout>
           </AuthProvider>
         </ThemeProvider>
       </body>

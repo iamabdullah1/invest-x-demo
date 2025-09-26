@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,186 +10,339 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle } from "lucide-react"
+import { Building2, MapPin, Shield, Calendar, Calculator, ShoppingCart, ArrowLeft, CheckCircle, Users, Target, TrendingUp, Clock, Eye, Package, List } from "lucide-react"
 import Link from "next/link"
-import { getProjectById, formatCurrency, calculateProgress } from "@/lib/mockData"
+import Image from "next/image"
+import { ImageCarousel } from "@/components/image-carousel"
+import { InventorySlider } from "@/components/inventory-slider"
+import { formatPKR, formatPKRPercentage, validatePKRAmount, parsePKR, amountToWordsPKR } from "@/lib/currency"
+import { useAuth } from "@/hooks/useAuth"
+
+interface Project {
+  _id: string
+  title: string
+  description: string
+  location: {
+    city: string
+    area: string
+    address: string
+  }
+  type: string
+  status: string
+  targetAmount: number
+  raisedAmount: number
+  minInvestment: number
+  expectedReturn: number
+  duration: number
+  area: number
+  pricePerSqFt: number
+  totalValue: number
+  timeline: {
+    projectStart: string
+    expectedCompletion: string
+    phases: Array<{
+      name: string
+      duration: string
+      status: string
+    }>
+  }
+  developer: {
+    name: string
+    experience: string
+    rating: number
+    completedProjects: number
+  }
+  images: string[]
+  riskLevel: string
+  riskFactors: string[]
+  amenities: string[]
+  specifications: {
+    bedrooms?: number
+    bathrooms?: number
+    parking: boolean
+    floor: number
+    facing: string
+  }
+  complianceStatus: {
+    noc: boolean
+    environmentalClearance: boolean
+    buildingApproval: boolean
+    utilityConnections: boolean
+  }
+  totalInvestors: number
+  createdAt: string
+};
+
+
 
 export default function ProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [investmentAmount, setInvestmentAmount] = useState("")
-  const [isCalculating, setIsCalculating] = useState(false)
+  const projectId = params.id as string
+  const { user, hasRole } = useAuth()
+  
+  const [project, setProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const project = getProjectById(params.id as string)
+  // Check if user can invest (only investor role, not admin)
+  const canInvest = hasRole('investor') && !hasRole('admin')
+  const isGuest = !user || user.role === 'guest'
 
-  if (!project) {
+  useEffect(() => {
+    if (projectId) {
+      fetchProject()
+    }
+  }, [projectId])
+
+  const fetchProject = async () => {
+    try {
+      console.log('Fetching project with ID:', projectId);
+      
+      // Use public API endpoint for project details
+      const response = await fetch(`/api/projects/${projectId}`)
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        console.error('Response not OK:', response.status, response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json()
+      console.log('Response data:', data);
+      
+      if (data.success && data.project) {
+        console.log('Project data received:', data.project)
+        console.log('Project images:', data.project.images)
+        setProject(data.project)
+      } else {
+        console.error('Project not found or API error:', data)
+        throw new Error(data.message || 'Project not found')
+      }
+    } catch (error) {
+      console.error('Error fetching project:', error)
+      // Show user-friendly error
+      alert(`Failed to load project details: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+
+  const calculateProgress = (raised: number, target: number) => {
+    return Math.min((raised / target) * 100, 100)
+  }
+
+  const getRiskBadgeColor = (risk: string) => {
+    switch (risk) {
+      case 'Low': return 'bg-green-100 text-green-800 border-green-200'
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'High': return 'bg-red-100 text-red-800 border-red-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'upcoming': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'funded': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const handleInvest = () => {
+    setInvesting(true)
+    // TODO: Implement actual investment flow
+    alert('Investment feature coming soon! This would redirect to the investment flow.')
+    setInvesting(false)
+  }
+
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold">Project Not Found</h1>
-        <p className="text-muted-foreground mt-2">The project you're looking for doesn't exist.</p>
-        <Button asChild className="mt-4">
-          <Link href="/projects">Back to Projects</Link>
-        </Button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading project details...</div>
+        </div>
       </div>
     )
   }
 
-  const progressPercentage = calculateProgress(project.raisedAmount, project.targetAmount)
-  const remainingAmount = project.targetAmount - project.raisedAmount
-  const investmentValue = Number.parseFloat(investmentAmount) || 0
-  const shares = investmentValue > 0 ? Math.floor((investmentValue / project.minInvestment) * 100) : 0
-  const projectedReturns = investmentValue * (project.expectedReturn / 100)
-
-  const handleAddToCart = () => {
-    if (investmentValue < project.minInvestment) {
-      alert(`Minimum investment is ${formatCurrency(project.minInvestment)}`)
-      return
-    }
-    // Add to cart logic here
-    router.push("/cart")
-  }
-
-  return (
-    <div className="space-y-8">
-      {/* Back Button */}
-      <Button variant="ghost" asChild>
-        <Link href="/projects">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Projects
-        </Link>
-      </Button>
-
-      {/* Hero Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="aspect-video bg-muted rounded-2xl overflow-hidden">
-            <img
-              src={project.images[0] || "/placeholder.svg"}
-              alt={project.title}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            {project.images.slice(1, 4).map((image, index) => (
-              <div key={index} className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <img
-                  src={image || "/placeholder.svg"}
-                  alt={`${project.title} ${index + 2}`}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant={project.status === "active" ? "default" : "secondary"}>{project.status}</Badge>
-              <Badge variant="outline">{project.type}</Badge>
-              <Badge
-                variant={
-                  project.riskLevel === "low" ? "default" : project.riskLevel === "medium" ? "secondary" : "destructive"
-                }
-              >
-                {project.riskLevel} risk
-              </Badge>
-            </div>
-            <h1 className="text-3xl font-bold">{project.title}</h1>
-            <p className="text-muted-foreground flex items-center mt-2">
-              <MapPin className="h-4 w-4 mr-1" />
-              {project.location}
-            </p>
-          </div>
-
-          {/* Key Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600">{project.expectedReturn}%</div>
-                <div className="text-sm text-muted-foreground">Expected Returns</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{project.duration}m</div>
-                <div className="text-sm text-muted-foreground">Investment Period</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{formatCurrency(project.minInvestment)}</div>
-                <div className="text-sm text-muted-foreground">Min. Investment</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{project.area.toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">Total Area (sq ft)</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Funding Progress */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="font-medium">Funding Progress</span>
-                  <span className="font-bold">{progressPercentage}%</span>
-                </div>
-                <Progress value={progressPercentage} className="h-3" />
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{formatCurrency(project.raisedAmount)} raised</span>
-                  <span>{formatCurrency(remainingAmount)} remaining</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Investment Calculator */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calculator className="h-5 w-5 mr-2" />
-                Investment Calculator
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="investment">Investment Amount (PKR)</Label>
-                <Input
-                  id="investment"
-                  type="number"
-                  placeholder={`Min. ${formatCurrency(project.minInvestment)}`}
-                  value={investmentAmount}
-                  onChange={(e) => setInvestmentAmount(e.target.value)}
-                />
-              </div>
-              {investmentValue > 0 && (
-                <div className="space-y-2 p-4 bg-muted rounded-lg">
-                  <div className="flex justify-between">
-                    <span>Shares:</span>
-                    <span className="font-medium">{shares}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Projected Returns:</span>
-                    <span className="font-medium text-green-600">{formatCurrency(projectedReturns)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Value:</span>
-                    <span className="font-bold">{formatCurrency(investmentValue + projectedReturns)}</span>
-                  </div>
-                </div>
-              )}
-              <Button onClick={handleAddToCart} className="w-full" disabled={investmentValue < project.minInvestment}>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Add to Cart
-              </Button>
-            </CardContent>
-          </Card>
+  if (!project) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
+          <p className="text-gray-600 mb-6">The project you're looking for doesn't exist or has been removed.</p>
+          <Link href="/projects">
+            <Button>Back to Projects</Button>
+          </Link>
         </div>
       </div>
+    )
+  }
+
+  const progress = calculateProgress(project.raisedAmount, project.targetAmount)
+  const remainingAmount = project.targetAmount - project.raisedAmount
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Link href="/projects">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Projects
+          </Button>
+        </Link>
+      </div>
+
+      <div className="space-y-8">
+        {/* Hero Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left: Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="aspect-[4/3] bg-muted rounded-2xl overflow-hidden relative">
+              {project.images && project.images.length > 0 ? (
+                <ImageCarousel
+                  images={project.images}
+                  alt={project.title}
+                  className="w-full h-full"
+                  aspectRatio="video"
+                  showDots={true}
+                  showArrows={true}
+                />
+              ) : (
+                <Image
+                  src="/placeholder.jpg"
+                  alt={project.title}
+                  fill
+                  className="object-cover"
+                />
+              )}
+            </div>
+
+            {/* Inventory Slider - Displayed beneath the project image */}
+            <div id="inventory-slider" className="" style={{
+              minHeight: '500px',
+              minWidth: '500px',
+              padding: '1rem 0'
+            }}>
+              <InventorySlider projectId={projectId} />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant={project.status === "active" ? "default" : "secondary"}>{project.status}</Badge>
+                <Badge variant="outline">{project.type}</Badge>
+                <Badge
+                  variant={
+                    project.riskLevel === "low" ? "default" : project.riskLevel === "medium" ? "secondary" : "destructive"
+                  }
+                >
+                  {project.riskLevel} risk
+                </Badge>
+                {isGuest && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    <Eye className="w-3 h-3 mr-1" />
+                    Preview Mode
+                  </Badge>
+                )}
+              </div>
+              <h1 className="text-3xl font-bold">{project.title}</h1>
+              <p className="text-muted-foreground flex items-center mt-2">
+                <MapPin className="h-4 w-4 mr-1" />
+                {project.location?.area || 'N/A'}, {project.location?.city || 'N/A'}
+              </p>
+              {isGuest && (
+                <p className="text-sm text-blue-600 mt-2 flex items-center">
+                  <Eye className="w-4 h-4 mr-1" />
+                  You're viewing this project as a guest. Register as an investor to invest.
+                </p>
+              )}
+            </div>
+
+            {/* Key Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold text-green-600">{project.expectedReturn}%</div>
+                  <div className="text-sm text-muted-foreground">Expected Returns</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{project.duration}m</div>
+                  <div className="text-sm text-muted-foreground">Investment Period</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{formatPKR(project.minInvestment)}</div>
+                  <div className="text-sm text-muted-foreground">Min. Investment</div>
+                </CardContent>
+              </Card>
+              <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{project.area ? project.area.toLocaleString() : 'N/A'}</div>
+                <div className="text-sm text-muted-foreground">Total Area (sq ft)</div>
+              </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Right: Sidebar with Project Info */}
+          <div className="space-y-6">
+            Funding Progress
+            <Card>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Funding Progress</span>
+                    <span className="font-bold">{progress.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-3" />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{formatPKR(project.raisedAmount, { compact: true })} raised</span>
+                    <span>{formatPKR(remainingAmount, { compact: true })} remaining</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Inventory Actions - For all users */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Available Inventory
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Invest in specific inventory items below. Each item represents available units in this project.
+                </p>
+                <Link href="#inventory-slider">
+                  <Button variant="outline" className="w-full">
+                    <List className="w-4 h-4 mr-2" />
+                    View Available Inventory
+                  </Button>
+                </Link>
+                {hasRole('admin') && (
+                  <Link href={`/inventory/new?projectId=${projectId}`}>
+                    <Button variant="outline" className="w-full">
+                      <Package className="w-4 h-4 mr-2" />
+                      Add Inventory
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
       {/* Detailed Information */}
       <Tabs defaultValue="overview" className="space-y-6">
@@ -222,7 +375,11 @@ export default function ProjectDetailPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Developer:</span>
-                    <span className="font-medium">{project.developer}</span>
+                    <span className="font-medium">
+                      {typeof project.developer === 'string' 
+                        ? project.developer 
+                        : project.developer?.name || 'N/A'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Project Type:</span>
@@ -230,8 +387,24 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Location:</span>
-                    <span className="font-medium">{project.city}</span>
+                    <span className="font-medium">{project.location?.city || 'N/A'}</span>
                   </div>
+                  {typeof project.developer === 'object' && project.developer && (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Experience:</span>
+                        <span className="font-medium">{project.developer.experience || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Completed Projects:</span>
+                        <span className="font-medium">{project.developer.completedProjects || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Rating:</span>
+                        <span className="font-medium">{project.developer.rating || 'N/A'}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -283,30 +456,30 @@ export default function ProjectDetailPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span>Target Amount:</span>
-                    <span className="font-medium">{formatCurrency(project.targetAmount)}</span>
+                    <span className="font-medium">{formatPKR(project.targetAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Amount Raised:</span>
-                    <span className="font-medium">{formatCurrency(project.raisedAmount)}</span>
+                    <span className="font-medium">{formatPKR(project.raisedAmount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Remaining:</span>
-                    <span className="font-medium">{formatCurrency(remainingAmount)}</span>
+                    <span className="font-medium">{formatPKR(remainingAmount)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between">
                     <span>Min Investment:</span>
-                    <span className="font-medium">{formatCurrency(project.minInvestment)}</span>
+                    <span className="font-medium">{formatPKR(project.minInvestment)}</span>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span>Total Area:</span>
-                    <span className="font-medium">{project.area.toLocaleString()} sq ft</span>
+                    <span className="font-medium">{project.area} sq ft</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Price per sq ft:</span>
-                    <span className="font-medium">{formatCurrency(project.pricePerSqFt)}</span>
+                    <span className="font-medium">{formatPKR(project.pricePerSqFt)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Expected Returns:</span>
@@ -330,12 +503,18 @@ export default function ProjectDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {project.amenities.map((amenity, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>{amenity}</span>
+                {(project.amenities && project.amenities.length > 0) ? (
+                  project.amenities.map((amenity, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span>{amenity}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    No amenities listed for this project
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
@@ -356,7 +535,9 @@ export default function ProjectDetailPage() {
                   <div>
                     <div className="font-medium">Project Launch</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(project.startDate).toLocaleDateString()}
+                      {project.timeline?.projectStart 
+                        ? new Date(project.timeline.projectStart).toLocaleDateString()
+                        : 'TBD'}
                     </div>
                   </div>
                 </div>
@@ -372,7 +553,9 @@ export default function ProjectDetailPage() {
                   <div>
                     <div className="font-medium">Project Completion</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(project.endDate).toLocaleDateString()}
+                      {project.timeline?.expectedCompletion 
+                        ? new Date(project.timeline.expectedCompletion).toLocaleDateString()
+                        : 'TBD'}
                     </div>
                   </div>
                 </div>
@@ -381,6 +564,7 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   )
 }

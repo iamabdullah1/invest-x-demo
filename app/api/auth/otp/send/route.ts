@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOTPEmail } from '@/lib/otpService';
 import { DatabaseService } from '@/lib/database';
+import connectDB, { testConnection } from '@/lib/mongodb';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Test MongoDB connection before proceeding
+    console.log('🔍 Testing MongoDB connection...');
+    const isConnected = await testConnection();
+    if (!isConnected) {
+      console.error('❌ MongoDB connection test failed');
+      return NextResponse.json(
+        { error: 'Database connection unavailable. Please try again.' },
+        { status: 503 }
+      );
+    }
+
+    console.log('✅ MongoDB connection test passed');
+
+    // Ensure database connection
+    await connectDB();
+
     // Check if user exists - only for signup now
+    console.log(`🔍 Checking if user exists: ${email}`);
     const existingUser = await DatabaseService.findUserByEmail(email);
     
     if (type === 'signup') {

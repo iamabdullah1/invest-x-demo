@@ -164,7 +164,7 @@ investmentSchema.index({ status: 1 });
 investmentSchema.index({ paymentStatus: 1 });
 investmentSchema.index({ investmentDate: -1 });
 investmentSchema.index({ maturityDate: 1 });
-investmentSchema.index({ transactionId: 1 });
+// transactionId index is already created by unique: true, no need to duplicate
 
 // Compound indexes
 investmentSchema.index({ userId: 1, status: 1 });

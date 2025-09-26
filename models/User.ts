@@ -38,6 +38,53 @@ export interface IUser extends Document {
   isActive: boolean;
   lastLogin?: Date;
   
+  // Wishlist
+  wishlist: string[];
+  
+  // Cart
+  cart: Array<{
+    inventoryId: string;
+    amount: number;
+    sqft: number;
+    pricePerSqFt: number;
+    addedAt: Date;
+  }>;
+  
+  // Investments
+  investments: Array<{
+    projectId: string;
+    amount: number;
+    investedAt: Date;
+  }>;
+  
+  // User Notifications
+  userNotifications: Array<{
+    _id?: string;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    read: boolean;
+    createdAt: Date;
+    relatedProjectId?: string;
+    actionUrl?: string;
+  }>;
+  
+  // Investor verification fields
+  verificationStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  verificationData?: {
+    verificationId?: string;
+    address?: string;
+    postalCode?: string;
+    frontIdUrl?: string;
+    frontIdPublicId?: string;
+    backIdUrl?: string;
+    backIdPublicId?: string;
+    submittedAt?: Date;
+    reviewedAt?: Date;
+    reviewedBy?: string;
+    rejectionReason?: string;
+  };
+  
   // Methods
   comparePassword(candidatePassword: string): Promise<boolean>;
   getFullName(): string;
@@ -145,6 +192,134 @@ const userSchema = new Schema<IUser>({
   },
   lastLogin: {
     type: Date
+  },
+  wishlist: [{
+    type: String,
+    ref: 'Project'
+  }],
+  cart: [{
+    inventoryId: {
+      type: String,
+      ref: 'InventoryCategory',
+      required: [true, 'Inventory ID is required']
+    },
+    amount: {
+      type: Number,
+      required: [true, 'Investment amount is required'],
+      min: [1000, 'Minimum investment amount is PKR 1,000']
+    },
+    sqft: {
+      type: Number,
+      required: [true, 'Square feet is required'],
+      min: [1, 'Square feet must be at least 1']
+    },
+    pricePerSqFt: {
+      type: Number,
+      required: [true, 'Price per square foot is required'],
+      min: [1, 'Price per square foot must be positive']
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  investments: [{
+    projectId: {
+      type: String,
+      ref: 'Project',
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    investedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  userNotifications: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    type: {
+      type: String,
+      enum: ['info', 'success', 'warning', 'error'],
+      required: true
+    },
+    read: {
+      type: Boolean,
+      default: false
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    relatedProjectId: {
+      type: String,
+      ref: 'Project'
+    },
+    actionUrl: {
+      type: String,
+      trim: true
+    }
+  }],
+  verificationStatus: {
+    type: String,
+    enum: ['none', 'pending', 'approved', 'rejected'],
+    default: 'none'
+  },
+  verificationData: {
+    verificationId: {
+      type: String,
+      trim: true
+    },
+    address: {
+      type: String,
+      trim: true
+    },
+    postalCode: {
+      type: String,
+      trim: true
+    },
+    frontIdUrl: {
+      type: String,
+      trim: true
+    },
+    frontIdPublicId: {
+      type: String,
+      trim: true
+    },
+    backIdUrl: {
+      type: String,
+      trim: true
+    },
+    backIdPublicId: {
+      type: String,
+      trim: true
+    },
+    submittedAt: {
+      type: Date
+    },
+    reviewedAt: {
+      type: Date
+    },
+    reviewedBy: {
+      type: String,
+      trim: true
+    },
+    rejectionReason: {
+      type: String,
+      trim: true
+    }
   }
 }, {
   timestamps: true,
@@ -153,10 +328,17 @@ const userSchema = new Schema<IUser>({
 });
 
 // Indexes for better query performance
-userSchema.index({ email: 1 });
+// email index is already created by unique: true, no need to duplicate
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
+userSchema.index({ verificationStatus: 1 });
 userSchema.index({ createdAt: -1 });
+
+// Compound indexes for common query patterns
+userSchema.index({ role: 1, isActive: 1 }); // Role-based active user queries
+userSchema.index({ verificationStatus: 1, 'verificationData.submittedAt': -1 }); // Admin verification queries
+userSchema.index({ isActive: 1, createdAt: -1 }); // Active users chronologically
+userSchema.index({ 'refreshTokens.token': 1 }, { sparse: true }); // Token lookup for auth
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
