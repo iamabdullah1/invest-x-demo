@@ -201,16 +201,11 @@ export default function AdminInventoryPage() {
             <Link href={`/inventory/new?projectId=${projectData._id}`}>
               <Button variant="outline">
                 <Plus className="w-4 h-4 mr-2" />
-                Add to Project
+                Add New Inventory
               </Button>
             </Link>
           )}
-          <Link href="/inventory/new">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Inventory
-            </Button>
-          </Link>
+         
         </div>
       </div>
 

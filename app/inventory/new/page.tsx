@@ -301,6 +301,7 @@ function AddInventoryCategoryForm() {
                     value={formData.country}
                     onChange={(e) => handleInputChange("country", e.target.value)}
                     placeholder="Pakistan"
+                    disabled
                   />
                   {errors.country && (
                     <p className="text-sm text-red-600 mt-1">{errors.country}</p>
@@ -313,6 +314,7 @@ function AddInventoryCategoryForm() {
                     value={formData.city}
                     onChange={(e) => handleInputChange("city", e.target.value)}
                     placeholder="Lahore"
+                    disabled
                   />
                   {errors.city && (
                     <p className="text-sm text-red-600 mt-1">{errors.city}</p>
@@ -325,6 +327,7 @@ function AddInventoryCategoryForm() {
                     value={formData.area}
                     onChange={(e) => handleInputChange("area", e.target.value)}
                     placeholder="DHA Phase 8"
+                    disabled
                   />
                   {errors.area && (
                     <p className="text-sm text-red-600 mt-1">{errors.area}</p>
