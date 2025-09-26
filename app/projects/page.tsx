@@ -267,10 +267,10 @@ export default function ProjectsPage() {
       if (searchTerm.trim()) {
         const search = searchTerm.toLowerCase()
         filtered = filtered.filter(project =>
-          (project.title?.toLowerCase() || '').includes(search) ||
-          (project.description?.toLowerCase() || '').includes(search) ||
-          (project.city?.toLowerCase() || '').includes(search) ||
-          (project.area?.toLowerCase() || '').includes(search)
+          (typeof project.title === 'string' ? project.title.toLowerCase() : '').includes(search) ||
+          (typeof project.description === 'string' ? project.description.toLowerCase() : '').includes(search) ||
+          (typeof project.city === 'string' ? project.city.toLowerCase() : '').includes(search) ||
+          (typeof project.area === 'string' ? project.area.toLowerCase() : '').includes(search)
         )
       }
 
@@ -314,11 +314,6 @@ export default function ProjectsPage() {
   useEffect(() => {
     fetchProjects()
   }, [fetchProjects])
-
-  // Debug filter state changes
-  useEffect(() => {
-    console.log('Filter state changed:', { searchTerm, selectedFilter, projectsCount: projects.length, filteredCount: filteredProjects.length })
-  }, [searchTerm, selectedFilter, projects, filteredProjects])
 
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value)

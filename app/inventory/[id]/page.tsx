@@ -236,10 +236,12 @@ export default function InventoryDetailPage() {
             </p>
           )}
         </div>
-        <Button onClick={() => router.push(`/admin/inventory/${inventoryId}/edit`)}>
-          <Edit className="w-4 h-4 mr-2" />
-          Edit Inventory
-        </Button>
+        {hasRole('admin') && (
+          <Button onClick={() => router.push(`/admin/inventory/${inventoryId}/edit`)}>
+            <Edit className="w-4 h-4 mr-2" />
+            Edit Inventory
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -404,11 +406,11 @@ export default function InventoryDetailPage() {
                   <TrendingUp className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                   <h3 className="font-medium text-blue-900 mb-1">Investment Preview</h3>
                   <p className="text-sm text-blue-700 mb-3">
-                    Register as an investor to invest in this inventory item.
+                    Verify and become an investor to invest in this inventory item.
                   </p>
-                  <Link href="/auth/signup">
+                  <Link href="/auth/investor-verification">
                     <Button size="sm" className="w-full">
-                      Sign Up to Invest
+                      Verify to Invest
                     </Button>
                   </Link>
                 </div>
