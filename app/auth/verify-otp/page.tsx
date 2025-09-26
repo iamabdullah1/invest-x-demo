@@ -10,6 +10,9 @@ import { Building2, Mail, Clock, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 
+// Force dynamic rendering - this page cannot be prerendered
+export const dynamic = 'force-dynamic'
+
 function OTPVerificationWrapper() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('sessionId')
