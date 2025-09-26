@@ -34,6 +34,12 @@ interface Project {
 const ProjectCard = memo(({ project }: { project: Project }) => {
   const [isInWishlist, setIsInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
+
+  // Early return if project is invalid
+  if (!project || !project._id) {
+    console.warn('Invalid project data:', project)
+    return null
+  }
   
   // Check if project is in wishlist on load
   useEffect(() => {
@@ -66,25 +72,30 @@ const ProjectCard = memo(({ project }: { project: Project }) => {
   }, [])
 
   const getProjectImage = useCallback((project: Project) => {
-    // If project has images, use the first one
-    if (project.images && project.images.length > 0 && project.images[0]) {
-      return project.images[0]
+    try {
+      // If project has images, use the first one
+      if (project.images && Array.isArray(project.images) && project.images.length > 0 && project.images[0]) {
+        return project.images[0]
+      }
+
+      // Fallback images based on project type or location
+      const fallbackImages = [
+        '/modern-apartments-islamabad.png',
+        '/luxury-residential-karachi.png',
+        '/commercial-plaza-lahore.png',
+        '/modern-residential-complex-karachi.png',
+        '/residential-development-rawalpindi.png',
+        '/lahore-gulberg-plaza.png'
+      ]
+
+      // Use project ID or title to consistently select the same fallback image
+      const seed = (project._id || project.title || 'default').toString()
+      const index = seed.length % fallbackImages.length
+      return fallbackImages[index]
+    } catch (error) {
+      console.error('Error getting project image:', error)
+      return '/placeholder.jpg'
     }
-    
-    // Fallback images based on project type or location
-    const fallbackImages = [
-      '/modern-apartments-islamabad.png',
-      '/luxury-residential-karachi.png', 
-      '/commercial-plaza-lahore.png',
-      '/modern-residential-complex-karachi.png',
-      '/residential-development-rawalpindi.png',
-      '/lahore-gulberg-plaza.png'
-    ]
-    
-    // Use project ID or title to consistently select the same fallback image
-    const seed = project._id || project.title || ''
-    const index = seed.length % fallbackImages.length
-    return fallbackImages[index]
   }, [])
 
   const toggleWishlist = async () => {
@@ -194,10 +205,10 @@ const ProjectCard = memo(({ project }: { project: Project }) => {
             </div>
           )}
           
-          {project.targetAmount && (
+          {project.targetAmount && !isNaN(Number(project.targetAmount)) && (
             <div className="flex items-center text-sm text-muted-foreground">
               <DollarSign className="h-4 w-4 mr-2" />
-              Target: {formatPKR(project.targetAmount, { compact: true })}
+              Target: {formatPKR(Number(project.targetAmount), { compact: true })}
             </div>
           )}
         </div>
@@ -249,25 +260,30 @@ export default function ProjectsPage() {
 
   // Memoized filtered projects
   const filteredProjects = useMemo(() => {
-    let filtered = projects
+    try {
+      let filtered = projects.filter(project => project && project._id) // Filter out invalid projects
 
-    // Apply search filter
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase()
-      filtered = filtered.filter(project =>
-        project.title?.toLowerCase().includes(search) ||
-        project.description?.toLowerCase().includes(search) ||
-        project.city?.toLowerCase().includes(search) ||
-        project.area?.toLowerCase().includes(search)
-      )
+      // Apply search filter
+      if (searchTerm.trim()) {
+        const search = searchTerm.toLowerCase()
+        filtered = filtered.filter(project =>
+          (project.title?.toLowerCase() || '').includes(search) ||
+          (project.description?.toLowerCase() || '').includes(search) ||
+          (project.city?.toLowerCase() || '').includes(search) ||
+          (project.area?.toLowerCase() || '').includes(search)
+        )
+      }
+
+      // Apply status filter
+      if (selectedFilter !== 'all') {
+        filtered = filtered.filter(project => project.status === selectedFilter)
+      }
+
+      return filtered
+    } catch (error) {
+      console.error('Error filtering projects:', error)
+      return []
     }
-
-    // Apply status filter
-    if (selectedFilter !== 'all') {
-      filtered = filtered.filter(project => project.status === selectedFilter)
-    }
-
-    return filtered
   }, [projects, searchTerm, selectedFilter])
 
   const fetchProjects = useCallback(async () => {
