@@ -289,10 +289,10 @@ export default function ProjectsPage() {
   const fetchProjects = useCallback(async () => {
     try {
       const response = await fetch('/api/projects')
-      
+
       if (response.ok) {
         const data = await response.json()
-        
+
         // Make sure we're setting the projects correctly
         if (data.success && data.projects) {
           setProjects(data.projects)
@@ -314,6 +314,11 @@ export default function ProjectsPage() {
   useEffect(() => {
     fetchProjects()
   }, [fetchProjects])
+
+  // Debug filter state changes
+  useEffect(() => {
+    console.log('Filter state changed:', { searchTerm, selectedFilter, projectsCount: projects.length, filteredCount: filteredProjects.length })
+  }, [searchTerm, selectedFilter, projects, filteredProjects])
 
   const handleSearch = useCallback((value: string) => {
     setSearchTerm(value)
@@ -347,7 +352,7 @@ export default function ProjectsPage() {
               type="text"
               placeholder="Search projects by title, location, or description..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -356,14 +361,14 @@ export default function ProjectsPage() {
           <div className="flex gap-2">
             <Button
               variant={selectedFilter === 'all' ? 'default' : 'outline'}
-              onClick={() => setSelectedFilter('all')}
+              onClick={() => handleFilterChange('all')}
               size="sm"
             >
               All Projects
             </Button>
             <Button
               variant={selectedFilter === 'active' ? 'default' : 'outline'}
-              onClick={() => setSelectedFilter('active')}
+              onClick={() => handleFilterChange('active')}
               size="sm"
             >
               Available Now
