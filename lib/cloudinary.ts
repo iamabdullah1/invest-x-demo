@@ -77,13 +77,27 @@ export class CloudinaryService {
     return this.uploadFile(fileBuffer, fileName, 'investx/projects');
   }
   
-  static async uploadVerificationDocuments(fileBuffers: Buffer[], userId: string): Promise<any[]> {
-    const uploadPromises = fileBuffers.map((buffer, index) => {
-      const fileName = `verification_${userId}_${index}_${Date.now()}`;
-      return this.uploadFile(buffer, fileName, 'investx/verification');
-    });
-    
-    return Promise.all(uploadPromises);
+  static async uploadVerificationDocuments(frontBuffer: Buffer, backBuffer: Buffer, verificationId: string): Promise<{ success: boolean; frontId?: any; backId?: any }> {
+    try {
+      const frontFileName = `verification_front_${verificationId}_${Date.now()}`;
+      const backFileName = `verification_back_${verificationId}_${Date.now()}`;
+
+      const [frontResult, backResult] = await Promise.all([
+        this.uploadFile(frontBuffer, frontFileName, 'investx/verification'),
+        this.uploadFile(backBuffer, backFileName, 'investx/verification')
+      ]);
+
+      return {
+        success: true,
+        frontId: frontResult,
+        backId: backResult
+      };
+    } catch (error) {
+      console.error('Error uploading verification documents:', error);
+      return {
+        success: false
+      };
+    }
   }
   
   static getOptimizedUrl(publicId: string, options?: {
