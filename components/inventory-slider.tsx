@@ -48,6 +48,16 @@ export function InventorySlider({ projectId }: InventorySliderProps) {
     fetchInventory()
   }, [projectId])
 
+  // Refetch inventory when window gains focus (e.g., user switches tabs back)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchInventory()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [projectId])
+
   // Update items per view based on screen size
   useEffect(() => {
     const updateItemsPerView = () => {

@@ -60,15 +60,24 @@ function AddInventoryCategoryForm() {
         if (data.success) {
           setProjectData(data.project)
           // Pre-fill form with project data
+          let defaultPropertyType = 'Residential';
+          let defaultPropertySubType = 'Apartment';
+
+          if (data.project.type === 'commercial') {
+            defaultPropertyType = 'Commercial';
+            defaultPropertySubType = 'Shop';
+          } else if (data.project.type === 'mixed-use') {
+            defaultPropertyType = 'Mixed';
+            defaultPropertySubType = 'Office';
+          }
+
           setFormData(prev => ({
             ...prev,
             country: "Pakistan", // Default country
             city: data.project.city || "",
-            area: data.project.location || "",
-            propertyType: data.project.type === 'residential' ? 'Residential' : 
-                         data.project.type === 'commercial' ? 'Commercial' : 'Residential',
-            propertySubType: data.project.type === 'mixed' ? 'Mixed Use' : 
-                           data.project.type === 'residential' ? 'Apartment' : 'Office',
+            area: data.project.location?.area || data.project.location || "",
+            propertyType: defaultPropertyType,
+            propertySubType: defaultPropertySubType,
           }))
         }
       }
@@ -136,7 +145,13 @@ function AddInventoryCategoryForm() {
     if (!formData.title) newErrors.title = "Title is required"
     if (!formData.description) newErrors.description = "Description is required"
     if (!formData.propertyType) newErrors.propertyType = "Property type is required"
+    else if (!['Residential', 'Commercial', 'Mixed'].includes(formData.propertyType)) {
+      newErrors.propertyType = "Invalid property type selected"
+    }
     if (!formData.propertySubType) newErrors.propertySubType = "Property sub-type is required"
+    else if (!['Apartment', 'Villa', 'Shop', 'Office', 'Plot'].includes(formData.propertySubType)) {
+      newErrors.propertySubType = "Invalid property sub-type selected"
+    }
     if (!formData.totalArea) newErrors.totalArea = "Total area is required"
     if (!formData.minSquareFeet) newErrors.minSquareFeet = "Minimum square feet is required"
     if (!formData.pricePerSquareFoot) newErrors.pricePerSquareFoot = "Price per square foot is required"
@@ -256,7 +271,6 @@ function AddInventoryCategoryForm() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Inventory Details</CardTitle>
-              
             </div>
           </CardHeader>
           <CardContent>
@@ -379,8 +393,7 @@ function AddInventoryCategoryForm() {
                     <SelectContent>
                       <SelectItem value="Residential">Residential</SelectItem>
                       <SelectItem value="Commercial">Commercial</SelectItem>
-                      <SelectItem value="Industrial">Industrial</SelectItem>
-                      <SelectItem value="Agricultural">Agricultural</SelectItem>
+                      <SelectItem value="Mixed">Mixed</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.propertyType && (
@@ -389,12 +402,21 @@ function AddInventoryCategoryForm() {
                 </div>
                 <div>
                   <Label htmlFor="propertySubType">Property Sub-Type *</Label>
-                  <Input
-                    id="propertySubType"
+                  <Select
                     value={formData.propertySubType}
-                    onChange={(e) => handleInputChange("propertySubType", e.target.value)}
-                    placeholder="Apartment, Villa, Shop, etc."
-                  />
+                    onValueChange={(value) => handleInputChange("propertySubType", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select property sub-type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Apartment">Apartment</SelectItem>
+                      <SelectItem value="Villa">Villa</SelectItem>
+                      <SelectItem value="Shop">Shop</SelectItem>
+                      <SelectItem value="Office">Office</SelectItem>
+                      <SelectItem value="Plot">Plot</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.propertySubType && (
                     <p className="text-sm text-red-600 mt-1">{errors.propertySubType}</p>
                   )}

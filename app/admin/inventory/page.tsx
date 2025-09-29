@@ -70,6 +70,18 @@ export default function AdminInventoryPage() {
     }
   }, [isAdmin, mounted, currentPage, searchTerm, propertyTypeFilter, projectIdFromParams])
 
+  // Refetch inventory when window gains focus (e.g., user switches tabs back)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAdmin && mounted) {
+        fetchInventory()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [isAdmin, mounted])
+
   const fetchProjectData = async (projectId: string) => {
     try {
       const response = await fetch(`/api/projects/${projectId}`)
