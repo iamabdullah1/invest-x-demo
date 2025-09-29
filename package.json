@@ -5,6 +5,11 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:clean": "rimraf .next && next dev",
+    "dev:fresh": "npm run clean && next dev",
+    "clean": "rimraf .next node_modules/.cache",
+    "clean:full": "rimraf .next node_modules/.cache out",
+    "troubleshoot": "node troubleshoot.js",
     "lint": "next lint",
     "start": "next start",
     "create-admin": "node scripts/create-admin-simple.js",
@@ -70,6 +75,7 @@
     "eslint": "9.36.0",
     "eslint-config-next": "15.5.4",
     "postcss": "^8.5",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.9",
     "typescript": "^5"
   }

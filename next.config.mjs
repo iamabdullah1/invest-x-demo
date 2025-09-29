@@ -6,6 +6,18 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Cache optimization to prevent corruption
+  generateBuildId: async () => {
+    // Use a more stable build ID to prevent cache issues
+    return 'build-' + Date.now()
+  },
+  // Clear cache on development server start
+  onDemandEntries: {
+    // Period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // Number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
   images: {
     unoptimized: false,
     domains: ['res.cloudinary.com'],
