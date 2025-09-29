@@ -232,8 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('investx-role');
         localStorage.removeItem('user-data');
       }
-      
-      router.push('/');
+      router.push('/auth/login');
+
     }
   };
 

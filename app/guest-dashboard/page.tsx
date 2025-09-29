@@ -416,5 +416,6 @@ export default function GuestDashboardPage() {
         </Card>
       </div>
     </RoleGuard>
-  )
+
+  );
 }
