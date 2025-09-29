@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Refresh user data to ensure consistency
         await refreshUser();
         
-        // Handle role-based redirect with a small delay to ensure state is updated
+        // Handle role-based redirect with full reload to clear client state
         setTimeout(() => {
           if (data.user.role === 'admin') {
             window.location.href = '/admin';
@@ -232,8 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('investx-role');
         localStorage.removeItem('user-data');
       }
-      router.push('/auth/login');
-
+      // Use full reload to clear client state
+      window.location.href = '/auth/login';
     }
   };
 
