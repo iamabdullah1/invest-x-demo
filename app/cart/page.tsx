@@ -52,6 +52,16 @@ export default function CartPage() {
     fetchCart()
   }, [])
 
+  // Refetch cart when window gains focus (e.g., user switches tabs back)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchCart()
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
+
   const fetchCart = async () => {
     try {
       setLoading(true)
